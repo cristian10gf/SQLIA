@@ -22,3 +22,16 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+
+# IDE specific files
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+
+# IA generated files
+.claude
+.agents
+.github/agents
+skills-*
