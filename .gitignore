@@ -37,3 +37,7 @@ lerna-debug.log*
 skills-*
 
 /generated/prisma
+.db-data/
+
+# Local Database Data
+.db-data/
