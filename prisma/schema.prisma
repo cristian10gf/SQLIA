@@ -60,6 +60,7 @@ model User {
   submissions        Submission[]
 
   @@map("users")
+  @@index([role], name: "idx_user_role")
 }
 
 model Course {
