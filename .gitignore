@@ -35,3 +35,5 @@ lerna-debug.log*
 .agents
 .github/agents
 skills-*
+
+/generated/prisma
