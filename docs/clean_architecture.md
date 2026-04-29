@@ -15,8 +15,14 @@ El dominio es el núcleo. Infraestructura y frameworks son detalles.
 ```
 src/tasks/
 ├── domain/
+│   ├── entities/      # Reglas puras
+│   └── repositories/  # Interfaces (Puertos)
 ├── application/
+│   └── use-cases/     # Orquestación
 └── infrastructure/
+    ├── controllers/   # Entrada HTTP
+    ├── persistence/   # Repos reales (Postgres/Mongo)
+    └── mappers/       # Traductores de datos
 ```
 
 - Domain: reglas de negocio
