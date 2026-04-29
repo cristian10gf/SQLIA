@@ -1,98 +1,102 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# SQLIA - Plataforma Educativa Interactiva de SQL
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Clean Architecture](https://img.shields.io/badge/Clean_Architecture-Success?style=for-the-badge)
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+SQLIA es una plataforma educativa interactiva orientada al aprendizaje y evaluación de SQL. Permite a los profesores crear cursos y retos interactivos, y a los estudiantes inscribirse, resolver ejercicios reales de bases de datos y recibir evaluaciones automatizadas.
 
-## Description
+## 🏛️ Arquitectura del Proyecto (Clean Architecture)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Este repositorio está construido siguiendo estrictamente los principios de **Clean Architecture** (Arquitectura Limpia). El objetivo principal es mantener un alto nivel de mantenibilidad, máxima testabilidad y un nulo acoplamiento con frameworks o librerías externas en el corazón del negocio.
 
-## Project setup
+La estructura del código divide las responsabilidades en 3 capas fundamentales por cada módulo (ej. `Auth`, `Courses`, `Challenges`):
 
+1. **Domain (Dominio):**
+   - **El corazón del sistema.**
+   - Contiene Entidades puras, Interfaces de repositorios (Puertos), Enums y Errores específicos del negocio.
+   - **Regla estricta:** NO tiene dependencias hacia fuera (ni de infraestructura, ni del framework HTTP o Base de datos).
+
+2. **Application (Casos de Uso):**
+   - Orquesta la lógica e interacciones del sistema.
+   - Contiene los Casos de Uso (`UseCases`), DTOs independientes de la red y Mappers de presentación.
+   - **Regla estricta:** Depende exclusivamente del Dominio. Define cómo se cumplen los procesos del negocio sin saber *cómo* se guardan los datos o por *dónde* entran las peticiones.
+
+3. **Infrastructure (Infraestructura):**
+   - Contiene los detalles de implementación (Base de datos, Framework HTTP NestJS, Librerías externas).
+   - Incluye Controladores REST (`Controllers`), Implementaciones de Prisma (`Repositories`), Estrategias de autenticación (JWT) y Mappers de Persistencia.
+   - **Regla estricta:** Es la única capa que conoce a NestJS, Prisma o interactúa con el mundo exterior. Interactúa con el interior únicamente implementando los "Puertos" (interfaces) del Dominio o inyectando los Casos de Uso.
+
+## ⚙️ Funcionalidades Principales y Módulos
+
+- **🔐 Módulo de Autenticación y Autorización (`auth`):**
+  - Registro y Login seguro basado en JWT.
+  - Control de acceso basado en Roles del Dominio (`ADMIN`, `PROFESSOR`, `STUDENT`).
+  - Arquitectura totalmente desacoplada (Manejo de excepciones de negocio de forma nativa).
+
+- **📚 Gestión de Cursos (`courses`):**
+  - Los profesores pueden crear y administrar laboratorios y cursos (Relación "CourseProfessor").
+  - Gestión de grupos y períodos académicos.
+  - Los estudiantes pueden realizar sus inscripciones (`Enrollments`).
+
+- **🎯 Motor de Retos y Evaluaciones (`challenges` & `evaluations`):**
+  - Creación de desafíos SQL (Challenges) categorizados por dificultad (Easym, Medium, Hard) y Visibilidad.
+  - Generación de configuraciones de datos virtuales (`DataGenConfig`).
+  - Recepción de evaluaciones (`Evaluations`) y registro de respuestas de los estudiantes garantizando retroalimentación por estados (`QUEUED`, `ACCEPTED`, `WRONG_ANSWER`, `SYNTAX_ERROR`, etc).
+
+## 🚀 Despliegue y Configuración Local
+
+### Requisitos previos
+- Node.js (v18+)
+- Docker y Docker Compose (para el Sandbox de ejecución y base de datos PostgreSQL)
+- NPM o Yarn
+
+### 1. Instalación de dependencias
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
-
+### 2. Levantar los servicios de infraestructura (BD)
+Use Docker Compose para levantar una instancia robusta de PostgreSQL:
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+docker-compose up -d
 ```
 
-## Run tests
-
+### 3. Configurar base de datos y Prisma
+Copie el archivo `.env.example` (en caso de existir) a `.env` y ajuste las credenciales de PostgreSQL.
 ```bash
-# unit tests
-$ npm run test
+# Generar el cliente fuertemente tipado de Prisma
+npx prisma generate
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# Aplicar las migraciones de base de datos a su PostgreSQL local
+npx prisma migrate dev
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 4. Ejecución del backend
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Modo desarrollo con recarga automática
+npm run start:dev
+
+# Modo producción
+npm run build
+npm run start:prod
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## 🧪 Testing
 
-## Resources
+Gracias a la Arquitectura Limpia modularizada, todas las lógicas Core (Dominio y Casos de Uso) pueden ser testeadas unitariamente aislando dependencias volátiles:
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+# Ejecutar Tests Unitarios
+npm run test
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+# Ejecución de Tests End-to-End
+npm run test:e2e
 
-## Support
+# Cobertura de Código
+npm run test:cov
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
