@@ -22,7 +22,7 @@ La estructura del código divide las responsabilidades en 3 capas fundamentales 
 2. **Application (Casos de Uso):**
    - Orquesta la lógica e interacciones del sistema.
    - Contiene los Casos de Uso (`UseCases`), DTOs independientes de la red y Mappers de presentación.
-   - **Regla estricta:** Depende exclusivamente del Dominio. Define cómo se cumplen los procesos del negocio sin saber *cómo* se guardan los datos o por *dónde* entran las peticiones.
+   - **Regla estricta:** Depende exclusivamente del Dominio. Define cómo se cumplen los procesos del negocio sin saber _cómo_ se guardan los datos o por _dónde_ entran las peticiones.
 
 3. **Infrastructure (Infraestructura):**
    - Contiene los detalles de implementación (Base de datos, Framework HTTP NestJS, Librerías externas).
@@ -49,23 +49,29 @@ La estructura del código divide las responsabilidades en 3 capas fundamentales 
 ## 🚀 Despliegue y Configuración Local
 
 ### Requisitos previos
+
 - Node.js (v18+)
 - Docker y Docker Compose (para el Sandbox de ejecución y base de datos PostgreSQL)
 - NPM o Yarn
 
 ### 1. Instalación de dependencias
+
 ```bash
 npm install
 ```
 
 ### 2. Levantar los servicios de infraestructura (BD)
+
 Use Docker Compose para levantar una instancia robusta de PostgreSQL:
+
 ```bash
 docker-compose up -d
 ```
 
 ### 3. Configurar base de datos y Prisma
+
 Copie el archivo `.env.example` (en caso de existir) a `.env` y ajuste las credenciales de PostgreSQL.
+
 ```bash
 # Generar el cliente fuertemente tipado de Prisma
 npx prisma generate
@@ -99,4 +105,3 @@ npm run test:e2e
 # Cobertura de Código
 npm run test:cov
 ```
-
