@@ -1,9 +1,8 @@
-// src/app.controller.ts
 import { Controller, Post, Body } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 
-@Controller('test')
+@Controller('submissions')
 export class SubmissionsController {
   constructor(
     @InjectQueue('sql-evaluation') private readonly sqlQueue: Queue,

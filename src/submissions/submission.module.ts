@@ -24,6 +24,7 @@ import { SqlWorker } from './infrastructure/queue/sql.worker';
       provide: 'IAiProvider', // Token para inyección de dependencia en el Use Case
       useClass: AiService,
     },
+    EvaluateSqlUseCase,
   ],
   exports: [EvaluateSqlUseCase], // Por si otros módulos necesitan usarlo
 })
