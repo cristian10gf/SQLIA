@@ -68,10 +68,10 @@ export class CourseController {
 
     @Patch(':id')
     @ApiOperation({ summary: 'Actualizar un curso' })
-    @ApiResponse({ type: UpdateCourseUseCase })
+    @ApiResponse({ type: CreateCourseDto })
     @ApiBearerAuth()
     @Roles(Role.PROFESSOR, Role.ADMIN)
-    async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCourseUseCase) {
+    async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateCourseDto) {
         await this.updateUseCase.execute(id, dto);
         return { message: 'Curso actualizado exitosamente' };
     }
