@@ -7,15 +7,17 @@ import {
     Patch,
     Delete,
     Param,
-    ParseUUIDPipe
+    ParseUUIDPipe,
+    Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { CreateCourseUseCase } from '../../application/use-cases/create-course.use-case';
 import { UpdateCourseUseCase } from '../../application/use-cases/update-course.use-case';
 import { FindAllCoursesUseCase } from '../../application/use-cases/find-all-courses.use-case';
 import { FindCourseByIdUseCase } from '../../application/use-cases/find-course-by-id.use-case';
 import { DeleteCourseUseCase } from '../../application/use-cases/delete-course.use-case';
 import { CreateCourseDto } from '../../application/dtos/create-course.dto';
+import { PaginationDto } from '../../application/dtos/pagination.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -47,13 +49,15 @@ export class CourseController {
     }
 
     @Get()
-    @ApiOperation({ summary: 'Obtener todos los cursos' })
+    @ApiOperation({ summary: 'Obtener todos los cursos con paginacion' })
     @ApiResponse({ type: [CreateCourseDto] })
     @ApiBearerAuth()
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.PROFESSOR, Role.ADMIN)
-    async findAll() {
-        return await this.findAllUseCase.execute();
+        @ApiQuery({ name: 'page', required: false, type: Number, description: 'Pagina', example: 1 })
+        @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Cantidad por pagina', example: 10 })
+    async findAll(@Query() paginationDto: PaginationDto) {
+        return await this.findAllUseCase.execute(paginationDto);
     }
 
 

@@ -21,9 +21,22 @@ export class PrismaCourseRepository implements ICourseRepository {
         return this.mapToDomain(savedModel);
     }
 
-    async findAll(): Promise<Course[]> {
-        const models = await this.prisma.course.findMany();
-        return models.map((model) => this.mapToDomain(model));
+    async findAll(skip: number, take: number): Promise<{ data: Course[], total: number }> {
+        const [models, total] = await Promise.all([
+            this.prisma.course.findMany({
+                skip: skip,
+                take: take,
+                orderBy: { createdAt: 'desc' }
+            }),
+            this.prisma.course.count()
+        ]);
+
+        const domainCourses = models.map((model) => this.mapToDomain(model));
+
+        return {
+            data: domainCourses,
+            total: total
+        };
     }
 
     async findById(id: string): Promise<Course | null> {
