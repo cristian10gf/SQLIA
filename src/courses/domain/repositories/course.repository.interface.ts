@@ -6,4 +6,7 @@ export interface ICourseRepository {
   save(course: Course): Promise<Course>;
   findAll(): Promise<Course[]>;
   findById(id: string): Promise<Course | null>;
+  findByCode(code: string): Promise<Course | null>;
+  update(id: string, course: Partial<Course>): Promise<Course>; 
+  delete(id: string): Promise<void>; 
 }
