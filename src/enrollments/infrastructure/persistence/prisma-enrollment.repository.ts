@@ -39,6 +39,63 @@ export class PrismaEnrollmentRepository implements IEnrollmentRepository {
         return models.map((model) => this.mapToDomain(model));
     }
 
+    async deleteByCompositeId(studentId: string, courseId: string): Promise<void> {
+        await this.prisma.enrollment.delete({
+            where: {
+                courseId_studentId: {
+                    courseId: courseId,
+                    studentId: studentId,
+                },
+            },
+        });
+    }
+
+    async findStudentsByCourse(courseId: string, skip: number, take: number): Promise<{ data: any[]; total: number }> {
+        const [models, total] = await Promise.all([
+            this.prisma.enrollment.findMany({
+                where: { courseId: courseId },
+                include: { student: true },
+                skip,
+                take,
+                orderBy: { enrolledAt: 'desc' }
+            }),
+            this.prisma.enrollment.count({ where: { courseId: courseId } })
+        ]);
+
+        const data = models.map(m => ({ student: { id: m.student.id, fullName: m.student.fullName, email: m.student.email }, enrolledAt: m.enrolledAt }));
+        return { data, total };
+    }
+
+    async findCoursesByStudent(studentId: string, skip: number, take: number): Promise<{ data: any[]; total: number }> {
+        const [models, total] = await Promise.all([
+            this.prisma.course.findMany({
+                where: { enrollments: { some: { studentId } } },
+                skip,
+                take,
+                orderBy: { createdAt: 'desc' }
+            }),
+            this.prisma.course.count({ where: { enrollments: { some: { studentId } } } })
+        ]);
+
+        const data = models.map(c => ({ id: c.id, name: c.name, code: c.code, period: c.period, professorId: c.professorId }));
+        return { data, total };
+    }
+
+    async findCoursesByProfessor(professorId: string, skip: number, take: number): Promise<{ data: any[]; total: number }> {
+        const [models, total] = await Promise.all([
+            this.prisma.course.findMany({
+                where: { professorId },
+                skip,
+                take,
+                orderBy: { createdAt: 'desc' }
+            }),
+            this.prisma.course.count({ where: { professorId } })
+        ]);
+
+        const data = models.map(c => ({ id: c.id, name: c.name, code: c.code, period: c.period, professorId: c.professorId }));
+        return { data, total };
+    }
+
     private mapToDomain(model: any): Enrollment {
         return new Enrollment(
             model.studentId,
