@@ -1,4 +1,16 @@
-export function AdminDashboard() {
+import { Link } from 'react-router-dom';
+
+type AdminDashboardProps = {
+  courseCount: number;
+  isLoading: boolean;
+  error: string;
+};
+
+export function AdminDashboard({
+  courseCount,
+  isLoading,
+  error,
+}: AdminDashboardProps) {
   return (
     <section className="dashboard-role-section">
       <div className="dashboard-heading">
@@ -6,30 +18,21 @@ export function AdminDashboard() {
         <h1>Gestión general de la plataforma</h1>
       </div>
 
+      {error && <p className="dashboard-error-message">{error}</p>}
+
       <div className="stats-grid">
         <article className="stat-card">
-          <span>Usuarios registrados</span>
-          <strong>128</strong>
-          <p>Estudiantes, profesores y administradores.</p>
+          <span>Cursos registrados</span>
+          <strong>{isLoading ? '...' : courseCount}</strong>
+          <p>Dato cargado desde el backend.</p>
         </article>
+      </div>
 
-        <article className="stat-card">
-          <span>Profesores</span>
-          <strong>12</strong>
-          <p>Docentes activos en la plataforma.</p>
-        </article>
-
-        <article className="stat-card">
-          <span>Cursos activos</span>
-          <strong>18</strong>
-          <p>Cursos con retos SQL configurados.</p>
-        </article>
-
-        <article className="stat-card">
-          <span>Retos publicados</span>
-          <strong>46</strong>
-          <p>Ejercicios disponibles para estudiantes.</p>
-        </article>
+      <div className="dashboard-panel">
+        <div className="panel-header">
+          <h2>Acciones disponibles</h2>
+          <Link to="/dashboard/courses">Ver cursos</Link>
+        </div>
       </div>
     </section>
   );

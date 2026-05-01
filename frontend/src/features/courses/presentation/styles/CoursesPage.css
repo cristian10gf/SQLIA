@@ -449,4 +449,18 @@
   .course-card-main {
     flex-direction: column;
   }
+  .courses-error-message {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.course-submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
 }

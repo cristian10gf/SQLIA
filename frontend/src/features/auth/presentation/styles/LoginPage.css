@@ -272,4 +272,10 @@
   .login-card {
     padding: 32px 24px;
   }
+  .login-form > button:disabled,
+.register-form > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+  transform: none;
+}
 }

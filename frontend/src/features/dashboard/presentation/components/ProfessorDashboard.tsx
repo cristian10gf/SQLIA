@@ -1,71 +1,37 @@
-export function ProfessorDashboard() {
+import { Link } from 'react-router-dom';
+
+type ProfessorDashboardProps = {
+  courseCount: number;
+  isLoading: boolean;
+  error: string;
+};
+
+export function ProfessorDashboard({
+  courseCount,
+  isLoading,
+  error,
+}: ProfessorDashboardProps) {
   return (
     <section className="dashboard-role-section">
       <div className="dashboard-heading">
         <span>Panel del profesor</span>
-        <h1>Seguimiento de cursos, retos y evaluaciones</h1>
+        <h1>Seguimiento de cursos y retos SQL</h1>
       </div>
+
+      {error && <p className="dashboard-error-message">{error}</p>}
 
       <div className="stats-grid">
         <article className="stat-card">
-          <span>Mis cursos</span>
-          <strong>4</strong>
-          <p>Cursos asignados al profesor.</p>
-        </article>
-
-        <article className="stat-card">
-          <span>Retos SQL</span>
-          <strong>21</strong>
-          <p>Retos creados o en borrador.</p>
-        </article>
-
-        <article className="stat-card">
-          <span>Evaluaciones</span>
-          <strong>6</strong>
-          <p>Parciales o actividades configuradas.</p>
-        </article>
-
-        <article className="stat-card">
-          <span>Submissions pendientes</span>
-          <strong>14</strong>
-          <p>Entregas por revisar o procesar.</p>
+          <span>Cursos disponibles</span>
+          <strong>{isLoading ? '...' : courseCount}</strong>
+          <p>Dato cargado desde el backend.</p>
         </article>
       </div>
 
       <div className="dashboard-panel">
         <div className="panel-header">
-          <h2>Últimas entregas</h2>
-          <button>Ver todas</button>
-        </div>
-
-        <div className="table-card">
-          <div className="table-row table-head">
-            <span>Estudiante</span>
-            <span>Reto</span>
-            <span>Estado</span>
-            <span>Puntaje</span>
-          </div>
-
-          <div className="table-row">
-            <span>Laura Martínez</span>
-            <span>JOIN y agregaciones</span>
-            <span className="status accepted">ACCEPTED</span>
-            <span>100</span>
-          </div>
-
-          <div className="table-row">
-            <span>Carlos Pérez</span>
-            <span>Subconsultas</span>
-            <span className="status warning">OPTIMIZATION</span>
-            <span>82</span>
-          </div>
-
-          <div className="table-row">
-            <span>Ana Gómez</span>
-            <span>GROUP BY</span>
-            <span className="status error">WRONG ANSWER</span>
-            <span>45</span>
-          </div>
+          <h2>Gestión académica</h2>
+          <Link to="/dashboard/courses">Administrar cursos</Link>
         </div>
       </div>
     </section>
