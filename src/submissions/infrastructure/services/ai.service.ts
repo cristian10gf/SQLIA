@@ -17,20 +17,22 @@ export class AiService implements IAiProvider {
     };
 
     const requestPayload = {
-      model: 'deepseek-ai/deepseek-v4-pro',
+      model: 'mistralai/mistral-medium-3.5-128b',
       messages: [
         {
           role: 'system',
           content:
-            'Eres un experto en SQL. Analiza el esquema y la consulta SQL. Luego, indica si la consulta es correcta y da recomendaciones de optimización. Responde de forma muy concisa y breve.',
+            'Eres un experto en SQL. Analiza el esquema y la consulta SQL. Luego, responde en texto plano, natural, sin negrita y conciso: La consulta es correcta/incorrecta y da recomendaciones de corrección u optimización.',
         },
         {
           role: 'user',
           content: `Esquema: ${schema}\nConsulta: ${query}`,
         },
       ],
-      temperature: 0.3,
-      max_tokens: 1000,
+      reasoning_effort: 'none',
+      temperature: 0.2,
+      top_p: 0.9,
+      max_tokens: 500,
       stream: false,
     };
 
