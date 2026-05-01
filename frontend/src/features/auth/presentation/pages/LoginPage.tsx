@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { PasswordVisibilityIcon } from '../../../../shared/components/PasswordVisibilityIcon';
 import '../styles/LoginPage.css';
 
 type LoginForm = {
@@ -20,6 +22,7 @@ export function LoginPage() {
 
   const [errors, setErrors] = useState<LoginErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const validateForm = () => {
     const newErrors: LoginErrors = {};
@@ -124,16 +127,29 @@ export function LoginPage() {
             <div className="form-group">
               <label htmlFor="password">Contraseña</label>
 
-              <input
-                id="password"
-                type="password"
-                placeholder="Ingresa tu contraseña"
-                value={form.password}
-                onChange={(event) =>
-                  handleChange('password', event.target.value)
-                }
-                className={errors.password ? 'input-error' : ''}
-              />
+              <div className="password-input-wrapper">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Ingresa tu contraseña"
+                  value={form.password}
+                  onChange={(event) =>
+                    handleChange('password', event.target.value)
+                  }
+                  className={errors.password ? 'input-error' : ''}
+                />
+
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((currentValue) => !currentValue)}
+                  aria-label={
+                    showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'
+                  }
+                >
+                  <PasswordVisibilityIcon visible={showPassword} />
+                </button>
+              </div>
 
               {errors.password && (
                 <span className="error-message">{errors.password}</span>
@@ -153,7 +169,7 @@ export function LoginPage() {
             </a>
 
             <p>
-              ¿No tienes cuenta? <a href="#">Registrarse</a>
+              ¿No tienes cuenta? <Link to="/register">Registrarse</Link>
             </p>
           </div>
         </div>

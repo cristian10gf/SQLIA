@@ -1,4 +1,4 @@
-.login-page {
+.register-page {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
@@ -8,7 +8,7 @@
     linear-gradient(135deg, #111827 0%, #1e293b 48%, #1d4ed8 100%);
 }
 
-.login-hero {
+.register-hero {
   min-height: 100vh;
   padding: 72px 72px 72px;
   color: #ffffff;
@@ -73,7 +73,7 @@
   letter-spacing: -1.6px;
 }
 
-.login-section {
+.register-section {
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -81,29 +81,29 @@
   padding: 32px;
 }
 
-.login-card {
-  width: min(440px, 100%);
-  padding: 42px;
+.register-card {
+  width: min(460px, 100%);
+  padding: 36px;
   border-radius: 28px;
   background: #ffffff;
   box-shadow: 0 24px 80px rgba(15, 23, 42, 0.32);
 }
 
-.login-header {
-  margin-bottom: 32px;
+.register-header {
+  margin-bottom: 28px;
 }
 
-.login-header h2 {
+.register-header h2 {
   margin: 0;
   color: #0f172a;
   font-size: 32px;
   font-weight: 900;
 }
 
-.login-form {
+.register-form {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 15px;
 }
 
 .form-group {
@@ -112,15 +112,16 @@
   gap: 8px;
 }
 
-.login-form label {
+.register-form label {
   color: #0f172a;
   font-size: 14px;
   font-weight: 800;
 }
 
-.login-form input {
+.register-form input,
+.register-form select {
   width: 100%;
-  padding: 14px 16px;
+  padding: 13px 16px;
   border: 1px solid #dbe3ef;
   border-radius: 14px;
   color: #0f172a;
@@ -130,13 +131,18 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.login-form input::placeholder {
+.register-form input::placeholder {
   color: #94a3b8;
 }
 
-.login-form input:focus {
+.register-form input:focus,
+.register-form select:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.register-form select {
+  cursor: pointer;
 }
 
 .password-input-wrapper {
@@ -149,7 +155,7 @@
   padding-right: 52px;
 }
 
-.login-form .password-toggle {
+.register-form .password-toggle {
   position: absolute;
   right: 12px;
   width: 36px;
@@ -166,7 +172,7 @@
   transition: background 0.2s ease, color 0.2s ease;
 }
 
-.login-form .password-toggle:hover {
+.register-form .password-toggle:hover {
   background: #f1f5f9;
   color: #2563eb;
   transform: none;
@@ -176,7 +182,7 @@
   display: block;
 }
 
-.login-form > button {
+.register-form > button {
   margin-top: 4px;
   padding: 15px;
   border: none;
@@ -189,7 +195,7 @@
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
-.login-form > button:hover {
+.register-form > button:hover {
   background: #1d4ed8;
   transform: translateY(-1px);
 }
@@ -216,39 +222,35 @@
   text-align: center;
 }
 
-.login-links {
-  margin-top: 24px;
+.register-links {
+  margin-top: 22px;
   text-align: center;
 }
 
-.login-links a {
+.register-links p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.register-links a {
   color: #2563eb;
   font-size: 14px;
   font-weight: 800;
   text-decoration: none;
 }
 
-.login-links a:hover {
+.register-links a:hover {
   text-decoration: underline;
 }
 
-.login-links p {
-  margin: 14px 0 0;
-  color: #64748b;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.forgot-password {
-  display: inline-block;
-}
-
 @media (max-width: 900px) {
-  .login-page {
+  .register-page {
     grid-template-columns: 1fr;
   }
 
-  .login-hero {
+  .register-hero {
     min-height: auto;
     padding: 40px 24px;
     gap: 56px;
@@ -264,12 +266,12 @@
     font-size: 38px;
   }
 
-  .login-section {
+  .register-section {
     min-height: auto;
     padding: 24px;
   }
 
-  .login-card {
+  .register-card {
     padding: 32px 24px;
   }
 }
