@@ -1,0 +1,90 @@
+# Producción (Compose): API + Postgres + Redis en red interna.
+# Postgres y Redis no exponen puertos al host.
+#
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    image: postgres:${POSTGRES_IMAGE_TAG:-15-alpine}
+    container_name: sqlia-postgres-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - sqlia-internal
+
+  redis:
+    image: redis:${REDIS_IMAGE_TAG:-7-alpine}
+    container_name: sqlia-redis-prod
+    command:
+      - redis-server
+      - --appendonly
+      - 'no'
+      - --maxmemory-policy
+      - noeviction
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-512mb}
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - sqlia-internal
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: sqlia-api-prod
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${PORT:-3000}
+      AI_URL: ${AI_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+    ports:
+      - '${API_PORT:-3000}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sqlia-internal
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget -qO- http://127.0.0.1:$${PORT:-3000}/health || exit 1',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  sqlia-internal:
+    driver: bridge
+
+volumes:
+  postgres_prod_data:
