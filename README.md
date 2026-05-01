@@ -60,17 +60,34 @@ La estructura del código divide las responsabilidades en 3 capas fundamentales 
 npm install
 ```
 
-### 2. Levantar los servicios de infraestructura (BD)
+### 2. Levantar los servicios de infraestructura (PostgreSQL + Redis)
 
-Use Docker Compose para levantar una instancia robusta de PostgreSQL:
+Los archivos Compose están separados por entorno (`docker-compose.dev.yml` y `docker-compose.prod.yml`). Para desarrollo local con la API en tu máquina:
 
 ```bash
-docker-compose up -d
+cp .env.dev.example .env.dev
+npm run db:up
+```
+
+Esto expone Postgres y Redis en `localhost` según `.env.dev`. Para ejecutar también la API dentro de Docker (opcional):
+
+```bash
+docker compose --env-file .env.dev -f docker-compose.dev.yml --profile full-docker up -d
+```
+
+Stack de producción en Compose (API sin exponer Postgres/Redis al host):
+
+```bash
+cp .env.prod.example .env.prod
+# Editar secretos en .env.prod
+npm run compose:prod
 ```
 
 ### 3. Configurar base de datos y Prisma
 
-Copie el archivo `.env.example` (en caso de existir) a `.env` y ajuste las credenciales de PostgreSQL.
+Use `.env.dev` (o `.env` si preferís un solo archivo local) con `DATABASE_URL` coherente con Postgres; el ejemplo está en `.env.dev.example`.
+
+Nest y Prisma cargan por defecto el archivo `.env` en la raíz (no `.env.dev`). En desarrollo podés copiar el ejemplo: `cp .env.dev.example .env` o mantener ambos sincronizados.
 
 ```bash
 # Generar el cliente fuertemente tipado de Prisma
