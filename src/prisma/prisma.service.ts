@@ -9,7 +9,6 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   constructor() {
-    // Info: Asegurar cargar var de entorno previo a construir Prisma + PostgreSQL
     const databaseUrl = process.env.DATABASE_URL;
     const pool = new Pool({ connectionString: databaseUrl });
     const adapter = new PrismaPg(pool);
