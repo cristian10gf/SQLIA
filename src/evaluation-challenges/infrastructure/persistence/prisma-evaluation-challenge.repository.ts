@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ChallengeVisibility } from '@prisma/client';
+import { Challenge } from '../../../challenges/domain/entities/challenge.entity';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { EvaluationChallenge } from '../../domain/entities/evaluation-challenge.entity';
 import { IEvaluationChallengeRepository } from '../../domain/repositories/evaluation-challenge.repository.interface';
@@ -46,7 +47,7 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
     skip: number,
     take: number,
     visibility?: boolean,
-  ): Promise<{ data: EvaluationChallenge[]; total: number }> {
+  ): Promise<{ data: Challenge[]; total: number }> {
     const where = {
       evaluationId,
       ...(visibility === undefined
@@ -68,7 +69,7 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
     ]);
 
     return {
-      data: models.map((model) => this.mapToDomain(model)),
+      data: models.map((model) => this.mapChallengeToDomain(model.challenge)),
       total,
     };
   }
@@ -120,6 +121,25 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
       model.challengeId,
       model.orderIndex,
       model.points,
+    );
+  }
+
+  private mapChallengeToDomain(model: any): Challenge {
+    return new Challenge(
+      model.id,
+      model.createdBy,
+      model.courseId,
+      model.title,
+      model.description,
+      model.difficulty,
+      model.visibility,
+      model.databaseEngine,
+      model.schemaDefinition,
+      model.seedScript,
+      model.expectedResult ?? {},
+      model.timeLimitMs,
+      model.status,
+      model.createdAt,
     );
   }
 }
