@@ -61,6 +61,8 @@ export class EnrollmentController {
   @Get('course/:courseId/students')
   @ApiOperation({ summary: 'Listar estudiantes de un curso con paginacion' })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async studentsByCourse(@Param('courseId') courseId: string, @Query() pagination: PaginationDto) {
@@ -70,6 +72,8 @@ export class EnrollmentController {
   @Get('student/:studentId/courses')
   @ApiOperation({ summary: 'Listar cursos en los que está inscrito un estudiante con paginacion' })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async coursesByStudent(@Param('studentId') studentId: string, @Query() pagination: PaginationDto) {
@@ -79,6 +83,8 @@ export class EnrollmentController {
   @Get('professor/:professorId/courses')
   @ApiOperation({ summary: 'Listar cursos asignados a un profesor con paginacion' })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async coursesByProfessor(@Param('professorId') professorId: string, @Query() pagination: PaginationDto) {

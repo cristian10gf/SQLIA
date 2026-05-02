@@ -103,16 +103,6 @@ export class EvaluationController {
     };
   }
 
-  @Delete(':id')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
-  @ApiOperation({ summary: 'Eliminar una evaluacion' })
-  async remove(@Param('id', ParseUUIDPipe) id: string) {
-    await this.deleteEvaluationUseCase.execute(id);
-    return { message: 'Evaluacion eliminada exitosamente' };
-  }
-
   @Patch(':id/change-visibility')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -126,4 +116,15 @@ export class EvaluationController {
       data: evaluation,
     };
   }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR)
+  @ApiOperation({ summary: 'Eliminar una evaluacion' })
+  async remove(@Param('id', ParseUUIDPipe) id: string) {
+    await this.deleteEvaluationUseCase.execute(id);
+    return { message: 'Evaluacion eliminada exitosamente' };
+  }
+
 }

@@ -1,8 +1,10 @@
 import { Type } from 'class-transformer';
 import { IsBoolean } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ChangeEvaluationVisibilityDto {
-  @Type(() => Boolean)
-  @IsBoolean()
-  isVisible: boolean;
+    @ApiProperty({ example: true })
+    @Type(() => Boolean)
+    @IsBoolean()
+    isVisible: boolean;
 }
