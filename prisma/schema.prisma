@@ -18,8 +18,8 @@ enum UserRole {
 }
 
 enum ChallengeVisibility {
-  PUBLIC
-  PRIVATE
+  PUBLIC    // Disponible para cualquier estudiante
+  PRIVATE   // Solo disponible dentro de un curso específico
 }
 
 enum ChallengeStatus {
@@ -57,6 +57,7 @@ model User {
   enrollments        Enrollment[]
   challenges         Challenge[]  @relation("ChallengeCreator")
   submissions        Submission[]
+  evaluations        Evaluation[] @relation("EvaluationCreator")
 
   @@map("users")
   @@index([role], name: "idx_user_role")
@@ -73,7 +74,6 @@ model Course {
 
   professor   User         @relation("CourseProfessor", fields: [professorId], references: [id])
   enrollments Enrollment[]
-  challenges  Challenge[]
   evaluations Evaluation[]
 
   @@index([professorId], name: "idx_course_professor")
@@ -94,7 +94,6 @@ model Enrollment {
 
 model Challenge {
   id               String              @id @default(uuid()) @db.Uuid
-  courseId         String?             @map("course_id") @db.Uuid
   createdBy        String              @map("created_by") @db.Uuid
   title            String
   description      String
@@ -108,13 +107,11 @@ model Challenge {
   status           ChallengeStatus     @default(DRAFT)
   createdAt        DateTime            @default(now()) @map("created_at")
 
-  course         Course?               @relation(fields: [courseId], references: [id])
   creator        User                  @relation("ChallengeCreator", fields: [createdBy], references: [id])
   dataGenConfigs DataGenConfig[]
   evaluations    EvaluationChallenge[]
   submissions    Submission[]
 
-  @@index([courseId], name: "idx_challenge_course")
   @@index([visibility], name: "idx_challenge_visibility")
   @@map("challenges")
 }
@@ -134,6 +131,7 @@ model DataGenConfig {
 model Evaluation {
   id              String   @id @default(uuid()) @db.Uuid
   courseId        String   @map("course_id") @db.Uuid
+  createdBy       String   @map("created_by") @db.Uuid
   title           String
   description     String?
   startDate       DateTime @map("start_date")
@@ -143,9 +141,11 @@ model Evaluation {
   isVisible       Boolean  @default(false) @map("is_visible")
 
   course      Course                @relation(fields: [courseId], references: [id])
+  creator     User                  @relation("EvaluationCreator", fields: [createdBy], references: [id])
   challenges  EvaluationChallenge[]
   submissions Submission[]
 
+  @@index([courseId], name: "idx_evaluation_course")
   @@map("evaluations")
 }
 
