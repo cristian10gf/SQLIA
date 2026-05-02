@@ -8,6 +8,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { CoursesModule } from './courses/courses.module';
 import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
+import { ChallengesModule } from './challenges/challenges.module';
+import { EvaluationChallengesModule } from './evaluation-challenges/evaluation-challenges.module';
 import { SubmissionsModule } from './submissions/submission.module';
 
 @Module({
@@ -24,6 +26,8 @@ import { SubmissionsModule } from './submissions/submission.module';
     CoursesModule,
     EnrollmentsModule,
     EvaluationsModule,
+    ChallengesModule,
+    EvaluationChallengesModule,
     SubmissionsModule,
   ],
   controllers: [AppController],

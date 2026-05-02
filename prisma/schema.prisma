@@ -75,6 +75,7 @@ model Course {
   professor   User         @relation("CourseProfessor", fields: [professorId], references: [id])
   enrollments Enrollment[]
   evaluations Evaluation[]
+  challenges  Challenge[]
 
   @@index([professorId], name: "idx_course_professor")
   @@map("courses")
@@ -95,6 +96,7 @@ model Enrollment {
 model Challenge {
   id               String              @id @default(uuid()) @db.Uuid
   createdBy        String              @map("created_by") @db.Uuid
+  courseId         String              @map("course_id") @db.Uuid
   title            String
   description      String
   difficulty       DifficultyLevel
@@ -108,11 +110,13 @@ model Challenge {
   createdAt        DateTime            @default(now()) @map("created_at")
 
   creator        User                  @relation("ChallengeCreator", fields: [createdBy], references: [id])
+  course         Course                @relation(fields: [courseId], references: [id])
   dataGenConfigs DataGenConfig[]
   evaluations    EvaluationChallenge[]
   submissions    Submission[]
 
   @@index([visibility], name: "idx_challenge_visibility")
+  @@index([courseId], name: "idx_challenge_course")
   @@map("challenges")
 }
 
@@ -156,7 +160,7 @@ model EvaluationChallenge {
   points       Int    @default(10)
 
   evaluation Evaluation @relation(fields: [evaluationId], references: [id])
-  challenge  Challenge  @relation(fields: [challengeId], references: [id])
+  challenge  Challenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
 
   @@id([evaluationId, challengeId])
   @@map("evaluation_challenges")
