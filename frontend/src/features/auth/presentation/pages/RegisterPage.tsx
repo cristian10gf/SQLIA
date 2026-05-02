@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PasswordVisibilityIcon } from '../../../../shared/components/PasswordVisibilityIcon';
+import type { UserRole } from '../../domain/auth.types';
+import { authApi } from '../../infrastructure/authApi';
+import { authStorage } from '../../infrastructure/authStorage';
 import '../styles/RegisterPage.css';
 
 type RegisterForm = {
@@ -18,9 +21,12 @@ type RegisterErrors = {
   role?: string;
   password?: string;
   confirmPassword?: string;
+  general?: string;
 };
 
 export function RegisterPage() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState<RegisterForm>({
     fullName: '',
     email: '',
@@ -33,6 +39,7 @@ export function RegisterPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors: RegisterErrors = {};
@@ -47,8 +54,8 @@ export function RegisterPage() {
 
     if (!fullName) {
       newErrors.fullName = 'El nombre completo es obligatorio.';
-    } else if (fullName.length < 3) {
-      newErrors.fullName = 'El nombre debe tener mínimo 3 caracteres.';
+    } else if (fullName.length < 5) {
+      newErrors.fullName = 'El nombre debe tener mínimo 5 caracteres.';
     }
 
     if (!email) {
@@ -97,12 +104,13 @@ export function RegisterPage() {
     setErrors((currentErrors) => ({
       ...currentErrors,
       [field]: undefined,
+      general: undefined,
     }));
 
     setSuccessMessage('');
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const isValid = validateForm();
@@ -111,7 +119,33 @@ export function RegisterPage() {
       return;
     }
 
-    setSuccessMessage('Formulario válido. Pendiente conexión con el backend.');
+    try {
+      setIsSubmitting(true);
+      setErrors({});
+      setSuccessMessage('');
+
+      const response = await authApi.register({
+        fullName: form.fullName.trim(),
+        email: form.email.trim().toLowerCase(),
+        role: form.role as UserRole,
+        password: form.password,
+      });
+
+      authStorage.saveSession(response.accessToken, response.user);
+      setSuccessMessage(
+        `Cuenta creada correctamente. Bienvenido, ${response.user.fullName}.`,
+      );
+      navigate('/dashboard');
+    } catch (error) {
+      setErrors({
+        general:
+          error instanceof Error
+            ? error.message
+            : 'No fue posible registrar la cuenta.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -265,7 +299,13 @@ export function RegisterPage() {
               )}
             </div>
 
-            <button type="submit">Crear cuenta</button>
+            {errors.general && (
+              <p className="error-message">{errors.general}</p>
+            )}
+
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
+            </button>
           </form>
 
           {successMessage && (

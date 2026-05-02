@@ -1,17 +1,12 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { authStorage } from '../../../auth/infrastructure/authStorage';
 import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 import type { DashboardRole } from '../../../../shared/layouts/DashboardLayout';
+import { courseApi } from '../../infrastructure/courseApi';
+import type { Course, CourseListResponse } from '../../domain/course.types';
 import '../styles/CoursesPage.css';
-
-type Course = {
-  id: string;
-  name: string;
-  code: string;
-  period: string;
-  group: string;
-  professorId: string;
-};
 
 type CourseForm = {
   name: string;
@@ -24,51 +19,6 @@ type CourseForm = {
 type CourseErrors = Partial<Record<keyof CourseForm, string>>;
 
 type FormMode = 'create' | 'edit' | null;
-
-const mockUser = {
-  fullName: 'Usuario Demo',
-  professorId: 'current-professor-id',
-};
-
-const enrolledCourseIds = [
-  'c1b2a3d4-0001-4000-9000-000000000001',
-  'c1b2a3d4-0002-4000-9000-000000000002',
-];
-
-const initialCourses: Course[] = [
-  {
-    id: 'c1b2a3d4-0001-4000-9000-000000000001',
-    name: 'Bases de Datos II',
-    code: 'BD2-2026',
-    period: '2026-1',
-    group: 'Grupo 1',
-    professorId: 'professor-001',
-  },
-  {
-    id: 'c1b2a3d4-0002-4000-9000-000000000002',
-    name: 'SQL Avanzado',
-    code: 'SQL-ADV',
-    period: '2026-1',
-    group: 'Grupo 2',
-    professorId: 'professor-002',
-  },
-  {
-    id: 'c1b2a3d4-0003-4000-9000-000000000003',
-    name: 'Optimización de Consultas',
-    code: 'OPT-SQL',
-    period: '2026-1',
-    group: 'Grupo 1',
-    professorId: 'professor-003',
-  },
-  {
-    id: 'c1b2a3d4-0004-4000-9000-000000000004',
-    name: 'Laboratorio SQL',
-    code: 'LAB-SQL',
-    period: '2026-1',
-    group: 'Grupo 3',
-    professorId: 'current-professor-id',
-  },
-];
 
 const emptyForm: CourseForm = {
   name: '',
@@ -84,22 +34,16 @@ const roleTitle: Record<DashboardRole, string> = {
   STUDENT: 'Mis cursos inscritos',
 };
 
-function createLocalId() {
-  return crypto.randomUUID();
-}
-
-function getCoursesByRole(role: DashboardRole, courses: Course[]) {
-  if (role === 'ADMIN') {
-    return courses;
+function normalizeCourseList(response: CourseListResponse): Course[] {
+  if (Array.isArray(response)) {
+    return response;
   }
 
-  if (role === 'PROFESSOR') {
-    return courses.filter(
-      (course) => course.professorId === mockUser.professorId,
-    );
+  if (response && Array.isArray(response.data)) {
+    return response.data;
   }
 
-  return courses.filter((course) => enrolledCourseIds.includes(course.id));
+  return [];
 }
 
 function normalizeText(value: string) {
@@ -107,11 +51,20 @@ function normalizeText(value: string) {
 }
 
 export function CoursesPage() {
+  const navigate = useNavigate();
   const formSectionRef = useRef<HTMLFormElement | null>(null);
   const detailSectionRef = useRef<HTMLElement | null>(null);
 
-  const [role, setRole] = useState<DashboardRole>('STUDENT');
-  const [courses, setCourses] = useState<Course[]>(initialCourses);
+  const [session] = useState(() => ({
+    token: authStorage.getToken(),
+    user: authStorage.getUser(),
+  }));
+
+  const token = session.token;
+  const user = session.user;
+  const role = user?.role as DashboardRole | undefined;
+
+  const [courses, setCourses] = useState<Course[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [formMode, setFormMode] = useState<FormMode>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -119,16 +72,72 @@ export function CoursesPage() {
   const [form, setForm] = useState<CourseForm>(emptyForm);
   const [errors, setErrors] = useState<CourseErrors>({});
   const [message, setMessage] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const canCreateCourse = role === 'PROFESSOR';
+  const canManageCourse = role === 'ADMIN' || role === 'PROFESSOR';
+
+  useEffect(() => {
+    if (!token || !user) {
+      navigate('/login', { replace: true });
+    }
+  }, [navigate, token, user]);
+
+  const loadCourses = useCallback(async () => {
+    if (!token || !user || !role) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setLoadError('');
+
+      let response: CourseListResponse;
+
+      if (role === 'ADMIN') {
+        response = await courseApi.findAll(token);
+        setCourses(normalizeCourseList(response));
+        return;
+      }
+
+      if (role === 'PROFESSOR') {
+        response = await courseApi.findAll(token);
+
+        const professorCourses = normalizeCourseList(response).filter(
+          (course) => course.professorId === user.id,
+        );
+
+        setCourses(professorCourses);
+        return;
+      }
+
+      response = await courseApi.findByStudent(user.id, token);
+      setCourses(normalizeCourseList(response));
+    } catch (error) {
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible cargar los cursos.',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [role, token, user?.id]);
+
+  useEffect(() => {
+    void loadCourses();
+  }, [loadCourses]);
 
   const visibleCourses = useMemo(() => {
-    const coursesByRole = getCoursesByRole(role, courses);
     const search = normalizeText(searchTerm);
 
     if (!search) {
-      return coursesByRole;
+      return courses;
     }
 
-    return coursesByRole.filter((course) => {
+    return courses.filter((course) => {
       const searchableText = [
         course.name,
         course.code,
@@ -141,10 +150,7 @@ export function CoursesPage() {
 
       return searchableText.includes(search);
     });
-  }, [courses, role, searchTerm]);
-
-  const canCreateCourse = role === 'PROFESSOR';
-  const canManageCourse = role === 'ADMIN' || role === 'PROFESSOR';
+  }, [courses, searchTerm]);
 
   const scrollToForm = () => {
     window.setTimeout(() => {
@@ -219,9 +225,13 @@ export function CoursesPage() {
   };
 
   const openCreateForm = () => {
+    if (!user) {
+      return;
+    }
+
     setForm({
       ...emptyForm,
-      professorId: mockUser.professorId,
+      professorId: user.id,
     });
     setErrors({});
     setSelectedCourse(null);
@@ -263,8 +273,13 @@ export function CoursesPage() {
     setFormMode(null);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!token) {
+      navigate('/login', { replace: true });
+      return;
+    }
 
     const isValid = validateForm();
 
@@ -272,93 +287,92 @@ export function CoursesPage() {
       return;
     }
 
-    if (formMode === 'create') {
-      const newCourse: Course = {
-        id: createLocalId(),
-        name: form.name.trim(),
-        code: form.code.trim().toUpperCase(),
-        period: form.period.trim(),
-        group: form.group.trim(),
-        professorId: form.professorId.trim(),
-      };
+    const payload = {
+      name: form.name.trim(),
+      code: form.code.trim().toUpperCase(),
+      period: form.period.trim(),
+      group: form.group.trim(),
+      professorId: form.professorId.trim(),
+    };
 
-      setCourses((currentCourses) => [newCourse, ...currentCourses]);
-      setMessage('Curso creado correctamente en la vista local.');
+    try {
+      setIsSaving(true);
+      setMessage('');
+
+      if (formMode === 'create') {
+        await courseApi.create(payload, token);
+        setMessage('Curso creado correctamente.');
+      }
+
+      if (formMode === 'edit' && selectedCourse) {
+        await courseApi.update(selectedCourse.id, payload, token);
+        setMessage('Curso actualizado correctamente.');
+      }
+
       closeForm();
-      return;
-    }
-
-    if (formMode === 'edit' && selectedCourse) {
-      const updatedCourse: Course = {
-        ...selectedCourse,
-        name: form.name.trim(),
-        code: form.code.trim().toUpperCase(),
-        period: form.period.trim(),
-        group: form.group.trim(),
-        professorId: form.professorId.trim(),
-      };
-
-      setCourses((currentCourses) =>
-        currentCourses.map((course) =>
-          course.id === selectedCourse.id ? updatedCourse : course,
-        ),
+      await loadCourses();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible guardar el curso.',
       );
-
-      setMessage('Curso actualizado correctamente en la vista local.');
-      closeForm();
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleDelete = (courseId: string) => {
+  const handleDelete = async (courseId: string) => {
+    if (!token) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
     const shouldDelete = window.confirm(
-      '¿Seguro que deseas eliminar este curso de la vista local?',
+      '¿Seguro que deseas eliminar este curso?',
     );
 
     if (!shouldDelete) {
       return;
     }
 
-    setCourses((currentCourses) =>
-      currentCourses.filter((course) => course.id !== courseId),
-    );
+    try {
+      await courseApi.remove(courseId, token);
 
-    if (detailCourse?.id === courseId) {
-      setDetailCourse(null);
+      if (detailCourse?.id === courseId) {
+        setDetailCourse(null);
+      }
+
+      setMessage('Curso eliminado correctamente.');
+      await loadCourses();
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible eliminar el curso.',
+      );
     }
-
-    setMessage('Curso eliminado correctamente de la vista local.');
   };
 
   const handleViewChallenges = () => {
     setMessage('La pantalla de retos SQL se implementará en el siguiente paso.');
   };
 
+  const handleLogout = () => {
+    authStorage.clearSession();
+    navigate('/login', { replace: true });
+  };
+
+  if (!token || !user || !role) {
+    return null;
+  }
+
   return (
-    <DashboardLayout role={role} userName={mockUser.fullName}>
-      <section className="courses-role-switcher">
-        <div>
-          <span>Vista temporal por rol</span>
-          <p>
-            Este selector es provisional mientras el rol real llega desde el
-            inicio de sesión.
-          </p>
-        </div>
-
-        <select
-          value={role}
-          onChange={(event) => {
-            setRole(event.target.value as DashboardRole);
-            setFormMode(null);
-            setDetailCourse(null);
-            setMessage('');
-          }}
-        >
-          <option value="STUDENT">Estudiante</option>
-          <option value="PROFESSOR">Profesor</option>
-          <option value="ADMIN">Administrador</option>
-        </select>
-      </section>
-
+    <DashboardLayout
+      role={role}
+      userName={user.fullName}
+      onLogout={handleLogout}
+    >
       <section className="courses-page">
         <div className="courses-header">
           <div>
@@ -378,6 +392,7 @@ export function CoursesPage() {
         </div>
 
         {message && <p className="courses-message">{message}</p>}
+        {loadError && <p className="courses-error-message">{loadError}</p>}
 
         <div className="courses-toolbar">
           <input
@@ -501,8 +516,16 @@ export function CoursesPage() {
               </div>
             </div>
 
-            <button type="submit" className="course-submit-button">
-              {formMode === 'create' ? 'Guardar curso' : 'Guardar cambios'}
+            <button
+              type="submit"
+              className="course-submit-button"
+              disabled={isSaving}
+            >
+              {isSaving
+                ? 'Guardando...'
+                : formMode === 'create'
+                  ? 'Guardar curso'
+                  : 'Guardar cambios'}
             </button>
           </form>
         )}
@@ -549,62 +572,71 @@ export function CoursesPage() {
           </article>
         )}
 
-        <div className="courses-list">
-          {visibleCourses.map((course) => (
-            <article className="course-card" key={course.id}>
-              <div className="course-card-main">
-                <div>
-                  <span className="course-code">{course.code}</span>
-                  <h2>{course.name}</h2>
-                  <p>
-                    {course.period} · {course.group}
-                  </p>
+        {isLoading && (
+          <div className="courses-empty-state">
+            <h2>Cargando cursos...</h2>
+            <p>Estamos consultando la información del backend.</p>
+          </div>
+        )}
+
+        {!isLoading && (
+          <div className="courses-list">
+            {visibleCourses.map((course) => (
+              <article className="course-card" key={course.id}>
+                <div className="course-card-main">
+                  <div>
+                    <span className="course-code">{course.code}</span>
+                    <h2>{course.name}</h2>
+                    <p>
+                      {course.period} · {course.group}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="course-actions">
-                <button type="button" onClick={() => openDetail(course)}>
-                  Ver detalle
-                </button>
-
-                {canManageCourse && (
-                  <>
-                    <button type="button" onClick={() => openEditForm(course)}>
-                      Editar curso
-                    </button>
-
-                    <button
-                      type="button"
-                      className="danger-action"
-                      onClick={() => handleDelete(course.id)}
-                    >
-                      Eliminar curso
-                    </button>
-                  </>
-                )}
-
-                {role === 'PROFESSOR' && (
-                  <button type="button" onClick={handleViewChallenges}>
-                    Crear reto
+                <div className="course-actions">
+                  <button type="button" onClick={() => openDetail(course)}>
+                    Ver detalle
                   </button>
-                )}
 
-                {role === 'STUDENT' && (
-                  <button type="button" onClick={handleViewChallenges}>
-                    Ver retos
-                  </button>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
+                  {canManageCourse && (
+                    <>
+                      <button type="button" onClick={() => openEditForm(course)}>
+                        Editar curso
+                      </button>
 
-        {visibleCourses.length === 0 && (
+                      <button
+                        type="button"
+                        className="danger-action"
+                        onClick={() => void handleDelete(course.id)}
+                      >
+                        Eliminar curso
+                      </button>
+                    </>
+                  )}
+
+                  {role === 'PROFESSOR' && (
+                    <button type="button" onClick={handleViewChallenges}>
+                      Crear reto
+                    </button>
+                  )}
+
+                  {role === 'STUDENT' && (
+                    <button type="button" onClick={handleViewChallenges}>
+                      Ver retos
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+
+        {!isLoading && visibleCourses.length === 0 && (
           <div className="courses-empty-state">
             <h2>No hay cursos para mostrar</h2>
             <p>
-              Ajusta la búsqueda o cambia el rol temporal para revisar otra
-              vista.
+              No se encontraron cursos asociados a tu usuario o a la búsqueda
+              actual.
             </p>
           </div>
         )}

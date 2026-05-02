@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PasswordVisibilityIcon } from '../../../../shared/components/PasswordVisibilityIcon';
+import { authApi } from '../../infrastructure/authApi';
+import { authStorage } from '../../infrastructure/authStorage';
 import '../styles/LoginPage.css';
 
 type LoginForm = {
@@ -12,9 +14,12 @@ type LoginForm = {
 type LoginErrors = {
   email?: string;
   password?: string;
+  general?: string;
 };
 
 export function LoginPage() {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState<LoginForm>({
     email: '',
     password: '',
@@ -23,6 +28,7 @@ export function LoginPage() {
   const [errors, setErrors] = useState<LoginErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors: LoginErrors = {};
@@ -65,12 +71,13 @@ export function LoginPage() {
     setErrors((currentErrors) => ({
       ...currentErrors,
       [field]: undefined,
+      general: undefined,
     }));
 
     setSuccessMessage('');
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const isValid = validateForm();
@@ -79,7 +86,29 @@ export function LoginPage() {
       return;
     }
 
-    setSuccessMessage('Formulario válido. Pendiente conexión con el backend.');
+    try {
+      setIsSubmitting(true);
+      setErrors({});
+      setSuccessMessage('');
+
+      const response = await authApi.login({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      });
+
+      authStorage.saveSession(response.accessToken, response.user);
+      setSuccessMessage(`Bienvenido, ${response.user.fullName}.`);
+      navigate('/dashboard');
+    } catch (error) {
+      setErrors({
+        general:
+          error instanceof Error
+            ? error.message
+            : 'No fue posible iniciar sesión.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -156,7 +185,13 @@ export function LoginPage() {
               )}
             </div>
 
-            <button type="submit">Entrar</button>
+            {errors.general && (
+              <p className="error-message">{errors.general}</p>
+            )}
+
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Ingresando...' : 'Entrar'}
+            </button>
           </form>
 
           {successMessage && (
