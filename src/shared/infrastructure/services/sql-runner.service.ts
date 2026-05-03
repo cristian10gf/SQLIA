@@ -72,8 +72,6 @@ export class SqlRunnerService {
 
         await client.end().catch(() => {});
 
-        console.log(`Intento ${i + 1}: Error detectado -> ${error.message}`);
-
         const isSqlSyntaxError =
           error.code && String(error.code).startsWith('42');
 
