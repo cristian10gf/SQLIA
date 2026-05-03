@@ -20,7 +20,7 @@ export class CreateChallengeUseCase {
     createdBy: string,
   ): Promise<Challenge> {
     //Verificar schema valido
-    await this.sqlRunnerService.runValidation(dto.schemaDefinition);
+    await this.sqlRunnerService.runValidation(dto.schemaDefinition, dto.seedScript);
 
     const challenge = new Challenge(
       randomUUID(),

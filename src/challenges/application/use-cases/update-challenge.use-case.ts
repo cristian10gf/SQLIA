@@ -21,7 +21,14 @@ export class UpdateChallengeUseCase {
     }
 
     if (dto.schemaDefinition) {
-      await this.sqlRunnerService.runValidation(dto.schemaDefinition);
+      if (dto.seedScript) {
+        await this.sqlRunnerService.runValidation(
+          dto.schemaDefinition,
+          dto.seedScript,
+        );
+      } else {
+        await this.sqlRunnerService.runValidation(dto.schemaDefinition);
+      }
     }
 
     const data: Partial<Challenge> = {

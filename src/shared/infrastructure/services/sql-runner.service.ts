@@ -10,7 +10,7 @@ import { Client } from 'pg';
 export class SqlRunnerService {
   private docker = new Docker(); // Busca el socket local
 
-  async runValidation(schemaSql: string) {
+  async runValidation(schemaSql: string, seedSql?: string) {
     const container = await this.docker.createContainer({
       Image: 'postgres:15-alpine',
       Env: ['POSTGRES_PASSWORD=pass', 'POSTGRES_DB=test'],
@@ -33,16 +33,21 @@ export class SqlRunnerService {
     const hostPort = inspect.NetworkSettings.Ports['5432/tcp'][0].HostPort;
 
     try {
-      await this.executeWithRetry('127.0.0.1', parseInt(hostPort), schemaSql);
+      await this.executeWithRetry(
+        '127.0.0.1',
+        parseInt(hostPort),
+        schemaSql,
+        seedSql,
+      );
     } catch (error) {
+      const origin = (error as any).origin || 'SISTEMA'; // Por si falla la conexión
       const errorMessage =
         error instanceof Error ? error.message : String(error);
+
       throw new BadRequestException({
-        message: 'Error en el esquema SQL',
+        message: `Error detectado en: ${origin}`, // Dirá "Error detectado en: ESQUEMA" o "SEMILLA"
         details: errorMessage,
       });
-    } finally {
-      await container.stop();
     }
   }
 
@@ -50,6 +55,7 @@ export class SqlRunnerService {
     host: string,
     port: number,
     sql: string,
+    seedSql?: string,
     retries = 15,
   ): Promise<void> {
     for (let i = 0; i < retries; i++) {
@@ -64,13 +70,31 @@ export class SqlRunnerService {
 
       try {
         await client.connect();
-        await client.query(sql);
+        await client.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
+        try {
+          await client.query(sql);
+        } catch (schemaErr) {
+          (schemaErr as any).origin = 'ESQUEMA';
+          throw schemaErr;
+        }
+        if (seedSql) {
+          try {
+            await client.query(seedSql);
+          } catch (seedErr) {
+            (seedErr as any).origin = 'DATOS INICIALES';
+            throw seedErr;
+          }
+        }
         await client.end();
         return;
       } catch (err) {
         const error = err as any;
 
         await client.end().catch(() => {});
+
+        if (error.origin) {
+          throw error;
+        }
 
         const isSqlSyntaxError =
           error.code && String(error.code).startsWith('42');
@@ -84,8 +108,5 @@ export class SqlRunnerService {
         throw err;
       }
     }
-    throw new InternalServerErrorException(
-      'El Runner SQL no respondió a tiempo',
-    );
   }
 }
