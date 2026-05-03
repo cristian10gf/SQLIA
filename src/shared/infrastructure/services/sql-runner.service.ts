@@ -48,6 +48,11 @@ export class SqlRunnerService {
         message: `Error detectado en: ${origin}`, // Dirá "Error detectado en: ESQUEMA" o "SEMILLA"
         details: errorMessage,
       });
+    } finally {
+      const state = await container.inspect();
+      if (state.State.Running) {
+        await container.stop({ t: 0 });
+      }
     }
   }
 
