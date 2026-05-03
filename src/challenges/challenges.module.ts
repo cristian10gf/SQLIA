@@ -12,11 +12,13 @@ import { FindVisibleChallengesByProfessorUseCase } from './application/use-cases
 import { ChangeChallengeVisibilityUseCase } from './application/use-cases/change-challenge-visibility.use-case';
 import { CHALLENGE_REPOSITORY } from './domain/repositories/challenge.repository.interface';
 import { PrismaChallengeRepository } from './infrastructure/persistence/prisma-challenge.repository';
+import { SharedModule } from '../shared/shared.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, SharedModule],
   controllers: [ChallengeController],
   providers: [
+    SharedModule,
     CreateChallengeUseCase,
     UpdateChallengeUseCase,
     DeleteChallengeUseCase,
