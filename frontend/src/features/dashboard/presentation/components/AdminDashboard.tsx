@@ -31,7 +31,7 @@ export function AdminDashboard({
       <div className="dashboard-panel">
         <div className="panel-header">
           <h2>Acciones disponibles</h2>
-          <Link to="/dashboard/courses">Ver cursos</Link>
+          <Link to="/courses">Ver cursos</Link>
         </div>
       </div>
     </section>
