@@ -31,7 +31,7 @@ export function StudentDashboard({
       <div className="dashboard-panel">
         <div className="panel-header">
           <h2>Actividad académica</h2>
-          <Link to="/dashboard/courses">Ver mis cursos</Link>
+          <Link to="/courses">Ver mis cursos</Link>
         </div>
       </div>
     </section>
