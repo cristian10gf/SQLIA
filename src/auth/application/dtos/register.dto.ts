@@ -27,7 +27,7 @@ export class RegisterDto {
   @ApiProperty({
     enum: Role,
     example: Role.STUDENT,
-    description: 'No usar ADMIN en registro público; los administradores se crean o promueven desde la API de usuarios.',
+    description: 'El rol del usuario',
   })
   @IsEnum(Role)
   role: Role;
