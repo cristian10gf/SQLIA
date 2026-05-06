@@ -6,6 +6,7 @@ import {
   UseGuards,
   ConflictException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,13 +21,11 @@ import { LoginDto } from '../../application/dtos/login.dto';
 import { AuthResponseDto } from '../../application/dtos/auth-response.dto';
 import { UserResponseDto } from '../../application/dtos/user-response.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../common/guards/roles.guard';
-import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { User } from '../../domain/entities/user.entity';
-import { Role } from '../../domain/enums/role.enum';
 import { EmailAlreadyRegisteredError } from '../../domain/errors/email-already-registered.error';
 import { InvalidCredentialsError } from '../../domain/errors/invalid-credentials.error';
+import { AdminRegistrationForbiddenError } from '../../domain/errors/admin-registration-forbidden.error';
 import { UserResponseMapper } from '../../application/mappers/user-response.mapper';
 
 @ApiTags('auth')
@@ -46,6 +45,9 @@ export class AuthController {
     } catch (error) {
       if (error instanceof EmailAlreadyRegisteredError) {
         throw new ConflictException(error.message);
+      }
+      if (error instanceof AdminRegistrationForbiddenError) {
+        throw new ForbiddenException(error.message);
       }
       throw error;
     }
@@ -72,14 +74,5 @@ export class AuthController {
   @ApiResponse({ type: UserResponseDto })
   getProfile(@CurrentUser() user: User): UserResponseDto {
     return UserResponseMapper.toDto(user);
-  }
-
-  @Get('admin-only')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Endpoint exclusivo para administradores' })
-  adminOnly(@CurrentUser() user: User) {
-    return { message: 'Bienvenido, administrador.', user: user.email };
   }
 }
