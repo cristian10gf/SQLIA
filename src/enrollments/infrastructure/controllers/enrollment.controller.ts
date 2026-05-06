@@ -38,7 +38,7 @@ export class EnrollmentController {
   @ApiOperation({ summary: 'Inscribir a un estudiante en un curso' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiResponse({ type: CreateEnrollmentDto })
   async enroll(@Body() dto: CreateEnrollmentDto) {
     const result = await this.createEnrollmentUseCase.execute(dto);
