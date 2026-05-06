@@ -153,34 +153,29 @@ function getChallengeStatusLabel(status: ChallengeStatus) {
 
 function getSidebarItems(role: UserRole) {
   if (role === 'ADMIN') {
-    return ['Panel', 'Usuarios', 'Profesores', 'Cursos', 'Informes'];
+    return ['Dashboard', 'Usuarios', 'Profesores', 'Cursos', 'Reportes'];
   }
 
   if (role === 'PROFESSOR') {
     return [
-      'Panel',
-      'Cursos',
-      'Retos SQL',
-      'Evaluaciones',
-      'Resultados',
+      'Dashboard',
+      'Mis cursos',
+      'Entregas',
       'Reportes',
     ];
   }
 
   return [
-    'Panel',
+    'Dashboard',
     'Mis cursos',
-    'Retos SQL',
-    'Mis envíos',
-    'Resultados',
+    'Mis resultados',
     'Recomendaciones',
   ];
 }
 
 function getActiveSidebarItem(role: UserRole) {
-  if (role === 'ADMIN') return 'Panel';
-  if (role === 'PROFESSOR') return 'Evaluaciones';
-  return 'Retos SQL';
+  if (role === 'ADMIN') return 'Cursos';
+  return 'Mis cursos';
 }
 
 function isChallengeAvailableForStudent(
@@ -733,10 +728,7 @@ export default function EvaluationsAndChallengesPage() {
           </nav>
         </div>
 
-        <div className="eval-sidebar-role-card">
-          <span>Rol real</span>
-          <strong>{getRoleLabel(role)}</strong>
-        </div>
+        
       </aside>
 
       <main className="eval-main">
