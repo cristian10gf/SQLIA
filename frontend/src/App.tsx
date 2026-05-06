@@ -16,7 +16,7 @@ function App() {
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/dashboard/courses" element={<CoursesPage />} />
       <Route
-        path="/dashboard/evaluations-challenges"
+        path="/dashboard/evaluations-challenges/:courseId"
         element={<EvaluationsAndChallengesPage />}
       />
 
