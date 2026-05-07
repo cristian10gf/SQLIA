@@ -705,10 +705,6 @@ export default function EvaluationsAndChallengesPage() {
           </h1>
         </div>
 
-        {actionMessage && (
-          <div className="eval-success-banner">{actionMessage}</div>
-        )}
-
         <section
           className={`eval-metrics-grid ${
             !isStudent ? 'eval-metrics-grid-three' : ''
