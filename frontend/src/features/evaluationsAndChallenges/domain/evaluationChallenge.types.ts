@@ -2,20 +2,22 @@ export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 
 export type EvaluationStatus = 'ACTIVE' | 'INACTIVE';
 
-export type ChallengeStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type ChallengeStatus = 'PUBLIC' | 'PRIVATE';
 
 export interface Challenge {
   id: number;
   title: string;
   description: string;
   difficulty: Difficulty;
-  points: number;
-  tags: string;
   databaseEngine: string;
-  timeLimit: number;
-  status: ChallengeStatus;
-  schemaSql: string;
-  initialDataSql: string;
+  visibility: ChallengeStatus;
+  schemaDefinition: string;
+  seedScript: string;
+  points: number;
+  expectedResult: {
+    resultCount: number;
+  };
+  timeLimitMs: number;
 }
 
 export interface Evaluation {
@@ -35,13 +37,13 @@ export interface ChallengeFormErrors {
   title?: string;
   description?: string;
   difficulty?: string;
-  points?: string;
-  tags?: string;
   databaseEngine?: string;
-  timeLimit?: string;
-  status?: string;
-  schemaSql?: string;
-  initialDataSql?: string;
+  visibility?: string;
+  points?: string;
+  schemaDefinition?: string;
+  seedScript?: string;
+  expectedResult?: string;
+  timeLimitMs?: string;
 }
 
 export interface EvaluationFormErrors {
