@@ -118,24 +118,6 @@ function getSessionUser(): SessionUser {
   };
 }
 
-function getRoleLabel(role: UserRole) {
-  if (role === 'ADMIN') return 'Administrador';
-  if (role === 'PROFESSOR') return 'Profesor';
-  return 'Estudiante';
-}
-
-function getInitials(name: string, role: UserRole) {
-  const words = name.trim().split(' ').filter(Boolean);
-
-  if (words.length >= 2) {
-    return `${words[0][0]}${words[1][0]}`.toUpperCase();
-  }
-
-  if (role === 'ADMIN') return 'AP';
-  if (role === 'PROFESSOR') return 'PP';
-  return 'EP';
-}
-
 function getDifficultyLabel(difficulty: Difficulty) {
   if (difficulty === 'EASY') return 'Fácil';
   if (difficulty === 'MEDIUM') return 'Media';
@@ -150,23 +132,6 @@ function getChallengeStatusLabel(status: ChallengeStatus) {
   if (status === 'DRAFT') return 'Borrador';
   if (status === 'PUBLISHED') return 'Publicado';
   return 'Archivado';
-}
-
-function getSidebarItems(role: UserRole) {
-  if (role === 'ADMIN') {
-    return ['Dashboard', 'Usuarios', 'Profesores', 'Cursos', 'Reportes'];
-  }
-
-  if (role === 'PROFESSOR') {
-    return ['Dashboard', 'Mis cursos', 'Entregas', 'Reportes'];
-  }
-
-  return ['Dashboard', 'Mis cursos', 'Mis resultados', 'Recomendaciones'];
-}
-
-function getActiveSidebarItem(role: UserRole) {
-  if (role === 'ADMIN') return 'Cursos';
-  return 'Mis cursos';
 }
 
 function isChallengeAvailableForStudent(
@@ -191,7 +156,6 @@ export default function EvaluationsAndChallengesPage() {
 
   const sessionUser = getSessionUser();
   const [role] = useState<UserRole>(sessionUser.role);
-  const displayUserName = user?.fullName || '';
 
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const loadData = async () => {
@@ -205,6 +169,24 @@ export default function EvaluationsAndChallengesPage() {
       const evaluationsList = response?.data || [];
 
       setEvaluations(evaluationsList);
+
+      if (selectedEvaluationId) {
+        const detailResponse = (await evaluationApi.findById(
+          selectedEvaluationId.toString(),
+          token,
+        )) as Evaluation;
+
+        setEvaluations((prevEvaluations) =>
+          prevEvaluations.map((ev) =>
+            ev.id === selectedEvaluationId
+              ? {
+                  ...detailResponse,
+                  challenges: detailResponse.challenges || [],
+                }
+              : ev,
+          ),
+        );
+      }
     } catch (error) {
       console.error('Error al cargar evaluaciones:', error);
       setEvaluations([]);
@@ -367,10 +349,6 @@ export default function EvaluationsAndChallengesPage() {
       errors.description = 'La descripción es obligatoria.';
     } else if (evaluation.description.trim().length < 10) {
       errors.description = 'La descripción debe tener mínimo 10 caracteres.';
-    }
-
-    if (!evaluation.courseName.trim()) {
-      errors.courseName = 'El curso asociado es obligatorio.';
     }
 
     if (!evaluation.startDate) {
@@ -584,52 +562,66 @@ export default function EvaluationsAndChallengesPage() {
 
   const handleEdit = (evaluation: Evaluation) => {
     setEditingEvaluationId(evaluation.id);
-    setSelectedEvaluationId(null);
 
     setEvaluationForm({
       title: evaluation.title,
       description: evaluation.description,
-      startDate: evaluation.startDate,
-      endDate: evaluation.endDate,
+      startDate: evaluation.startDate.split('T')[0],
+      endDate: evaluation.endDate.split('T')[0],
       status: evaluation.status,
-      durationMinutes: evaluation.durationMinutes,
-      maxAttempts: evaluation.maxAttempts,
-      courseName: evaluation.courseName,
-      challenges: evaluation.challenges,
+      durationMinutes: evaluation.durationMinutes || 60,
+      maxAttempts: evaluation.maxAttempts || 1,
+      courseName: evaluation.courseName || '',
+      challenges: evaluation.challenges || [],
     });
 
-    setEvaluationErrors({});
-    setChallengeErrors({});
-    setActionMessage('Editando evaluación seleccionada.');
+    setSelectedEvaluationId(null);
 
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    });
+    // Scroll suave hacia el formulario
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string) => {
+    // 1. Confirmación del usuario
     const confirmDelete = window.confirm(
-      '¿Seguro que deseas eliminar esta evaluación?',
+      '¿Seguro que deseas eliminar esta evaluación? Esta acción no se puede deshacer.',
     );
 
     if (!confirmDelete) return;
 
-    setEvaluations((previous) =>
-      previous.filter((evaluation) => evaluation.id !== id),
-    );
+    try {
+      // 2. Llamada a la API
+      // Asegúrate de pasar el token que ya tienes disponible en el componente
+      await evaluationApi.remove(id, token!);
 
-    if (editingEvaluationId === id) {
-      clearForm();
+      // 3. Actualización del estado local (Optimistic UI o Sync)
+      setEvaluations((previous) =>
+        previous.filter((evaluation) => evaluation.id.toString() !== id),
+      );
+
+      if (editingEvaluationId?.toString() === id) {
+        setEditingEvaluationId(null);
+        clearForm();
+      }
+
+      if (selectedEvaluationId?.toString() === id) {
+        setSelectedEvaluationId(null);
+      }
+
+      setActionMessage('Evaluación eliminada correctamente del servidor.');
+      await loadData();
+    } catch (error: any) {
+      console.error('Error al eliminar la evaluación:', error);
+
+      // Feedback de error
+      const errorMsg =
+        error.response?.data?.message || 'No se pudo eliminar la evaluación.';
+      setActionMessage(`Error: ${errorMsg}`);
+
+      // Si la API falló, podrías recargar los datos para restaurar la lista
+      await loadData();
     }
-
-    if (selectedEvaluationId === id) {
-      setSelectedEvaluationId(null);
-    }
-
-    setActionMessage('Evaluación eliminada correctamente.');
   };
-
   const handleOpenDetail = (evaluationId: number) => {
     setSelectedEvaluationId(evaluationId);
 
@@ -773,23 +765,17 @@ export default function EvaluationsAndChallengesPage() {
 
             <div className="eval-detail-grid">
               <div>
-                <strong>Curso</strong>
-                <span>{selectedEvaluation.courseName}</span>
-              </div>
-
-              <div>
-                <strong>Estado</strong>
-                <span>{getStatusLabel(selectedEvaluation.status)}</span>
-              </div>
-
-              <div>
                 <strong>Fecha de inicio</strong>
-                <span>{selectedEvaluation.startDate}</span>
+                <span>
+                  {new Date(selectedEvaluation.startDate).toLocaleDateString()}
+                </span>
               </div>
 
               <div>
                 <strong>Fecha de cierre</strong>
-                <span>{selectedEvaluation.endDate}</span>
+                <span>
+                  {new Date(selectedEvaluation.endDate).toLocaleDateString()}
+                </span>
               </div>
 
               <div>
@@ -804,9 +790,12 @@ export default function EvaluationsAndChallengesPage() {
             </div>
 
             <div className="eval-detail-challenges">
-              <h3>Retos SQL de la evaluación</h3>
+              {Array.isArray(selectedEvaluation?.challenges) &&
+              selectedEvaluation.challenges.length > 0 ? (
+                <h3>Retos SQL de la evaluación</h3>
+              ) : null}
 
-              {selectedEvaluation.challenges.map((challenge) => {
+              {selectedEvaluation?.challenges?.map((challenge) => {
                 const canSubmit = isChallengeAvailableForStudent(
                   selectedEvaluation,
                   challenge,
@@ -922,7 +911,7 @@ export default function EvaluationsAndChallengesPage() {
               </div>
 
               <div className="eval-form-grid">
-                <div className="eval-form-group">
+                <div className="eval-form-group full">
                   <label>Nombre de la evaluación</label>
                   <input
                     type="text"
@@ -935,23 +924,6 @@ export default function EvaluationsAndChallengesPage() {
                   {evaluationErrors.title && (
                     <span className="eval-error-text">
                       {evaluationErrors.title}
-                    </span>
-                  )}
-                </div>
-
-                <div className="eval-form-group">
-                  <label>Curso asociado</label>
-                  <input
-                    type="text"
-                    value={evaluationForm.courseName}
-                    onChange={(event) =>
-                      handleEvaluationChange('courseName', event.target.value)
-                    }
-                    placeholder="Ej: Bases de Datos II"
-                  />
-                  {evaluationErrors.courseName && (
-                    <span className="eval-error-text">
-                      {evaluationErrors.courseName}
                     </span>
                   )}
                 </div>
@@ -1044,21 +1016,7 @@ export default function EvaluationsAndChallengesPage() {
                   )}
                 </div>
 
-                <div className="eval-form-group">
-                  <label>Estado</label>
-                  <select
-                    value={evaluationForm.status}
-                    onChange={(event) =>
-                      handleEvaluationChange(
-                        'status',
-                        event.target.value as EvaluationStatus,
-                      )
-                    }
-                  >
-                    <option value="ACTIVE">Activa</option>
-                    <option value="INACTIVE">Inactiva</option>
-                  </select>
-                </div>
+                <div className="eval-form-group"></div>
                 <div className="eval-form-actions">
                   <button
                     type="button"
@@ -1390,19 +1348,26 @@ export default function EvaluationsAndChallengesPage() {
                       <p>{evaluation.description}</p>
                     </div>
 
-                    <span
-                      className={`eval-status-badge ${
-                        evaluation.status === 'ACTIVE' ? 'active' : 'inactive'
-                      }`}
-                    >
-                      {getStatusLabel(evaluation.status)}
-                    </span>
+                    {/*
+                      <span
+                        className={`eval-status-badge ${
+                          evaluation.status === 'ACTIVE' ? 'active' : 'inactive'
+                        }`}
+                      >
+                        {getStatusLabel(evaluation.status)}
+                      </span>
+                    */}
                   </div>
 
                   <div className="eval-card-dates">
-                    <span>Curso: {evaluation.courseName}</span>
-                    <span>Inicio: {evaluation.startDate}</span>
-                    <span>Cierre: {evaluation.endDate}</span>
+                    <span>
+                      Inicio:{' '}
+                      {new Date(evaluation.startDate).toLocaleDateString()}
+                    </span>
+                    <span>
+                      Cierre:{' '}
+                      {new Date(evaluation.endDate).toLocaleDateString()}
+                    </span>
                     <span>Duración: {evaluation.durationMinutes} min</span>
                     <span>Intentos: {evaluation.maxAttempts}</span>
                     <span>Retos: {evaluation.challenges?.length || 0}</span>
@@ -1466,7 +1431,7 @@ export default function EvaluationsAndChallengesPage() {
                         <button
                           type="button"
                           className="eval-danger-btn"
-                          onClick={() => handleDelete(evaluation.id)}
+                          onClick={() => handleDelete(evaluation.id.toString())}
                         >
                           Eliminar
                         </button>
