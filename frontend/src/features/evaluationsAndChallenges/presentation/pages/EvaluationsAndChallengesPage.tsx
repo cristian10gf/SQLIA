@@ -162,29 +162,29 @@ export default function EvaluationsAndChallengesPage() {
     try {
       const response: any =
         role === 'PROFESSOR'
-          ? await evaluationApi.listForProfessor(courseId, { limit: 5 }, token)
-          : await evaluationApi.listVisibleForStudent(courseId, 1, 5, token);
-      const evaluationsList = response?.data || [];
+          ? await evaluationApi.listForProfessor(courseId, { limit: 10 }, token)
+          : await evaluationApi.listVisibleForStudent(courseId, 1, 10, token);
 
-      setEvaluations(evaluationsList);
+      const rawData = role === 'PROFESSOR' ? response?.data : response;
+      const evaluationsData = Array.isArray(rawData) ? rawData : [];
 
-      if (selectedEvaluationId) {
-        const detailResponse = (await evaluationApi.findById(
-          selectedEvaluationId.toString(),
-          token,
-        )) as Evaluation;
+      const enrichedEvaluations = await Promise.all(
+        evaluationsData.map(async (ev: Evaluation) => {
+          try {
+            const challengesRes: any =
+              await evaluationChallengeApi.listByEvaluation(
+                ev.id.toString(),
+                {},
+                token,
+              );
+            return { ...ev, challenges: challengesRes.data || [] };
+          } catch {
+            return { ...ev, challenges: [] };
+          }
+        }),
+      );
 
-        setEvaluations((prevEvaluations) =>
-          prevEvaluations.map((ev) =>
-            ev.id === selectedEvaluationId
-              ? {
-                  ...detailResponse,
-                  challenges: detailResponse.challenges || [],
-                }
-              : ev,
-          ),
-        );
-      }
+      setEvaluations(enrichedEvaluations);
     } catch (error) {
       console.error('Error al cargar evaluaciones:', error);
       setEvaluations([]);
@@ -500,33 +500,57 @@ export default function EvaluationsAndChallengesPage() {
         timeLimitMs: Number(challengeForm.timeLimitMs),
       };
 
-      const challengeRes: any = await challengeApi.create(
-        challengePayload,
-        token!,
-      );
-      const newChallenge = challengeRes.data;
+      if (editingChallengeId) {
+        await challengeApi.update(
+          editingChallengeId.toString(),
+          challengePayload,
+          token!,
+        );
 
-      await evaluationChallengeApi.associate(
-        {
-          evaluationId: editingEvaluationId.toString(),
-          challengeId: newChallenge.id,
-          points: Number(points),
-          orderIndex: evaluationForm.challenges.length + 1,
-        },
-        token!,
-      );
+        await evaluationChallengeApi.updateAssociation(
+          editingEvaluationId!.toString(),
+          editingChallengeId.toString(),
+          { points: Number(points) },
+          token!,
+        );
 
-      const challengeWithPoints = { ...newChallenge, points: Number(points) };
+        setEvaluationForm((prev) => ({
+          ...prev,
+          challenges: prev.challenges.map((ch) =>
+            ch.id === editingChallengeId
+              ? { ...ch, ...challengePayload, points: Number(points) }
+              : ch,
+          ),
+        }));
+        setActionMessage('Reto actualizado correctamente');
+      } else {
+        const challengeRes: any = await challengeApi.create(
+          challengePayload,
+          token!,
+        );
+        const newChallenge = challengeRes.data;
 
-      setEvaluationForm({
-        ...evaluationForm,
-        challenges: [...evaluationForm.challenges, challengeWithPoints],
-      });
+        await evaluationChallengeApi.associate(
+          {
+            evaluationId: editingEvaluationId.toString(),
+            challengeId: newChallenge.id,
+            points: Number(points),
+            orderIndex: evaluationForm.challenges.length + 1,
+          },
+          token!,
+        );
+        const challengeWithPoints = { ...newChallenge, points: Number(points) };
 
-      setChallengeForm(emptyChallenge);
-      setChallengeErrors({});
+        setEvaluationForm({
+          ...evaluationForm,
+          challenges: [...evaluationForm.challenges, challengeWithPoints],
+        });
 
-      setActionMessage('Reto agregado correctamente a la evaluación.');
+        setChallengeForm(emptyChallenge);
+        setChallengeErrors({});
+
+        setActionMessage('Reto agregado correctamente a la evaluación.');
+      }
 
       await loadData();
     } catch (error: any) {
@@ -553,17 +577,45 @@ export default function EvaluationsAndChallengesPage() {
     setActionMessage('Reto agregado correctamente a la evaluación.');
   };
 
-  const removeChallenge = (challengeId: number) => {
-    const updatedForm = {
-      ...evaluationForm,
-      challenges: evaluationForm.challenges.filter(
-        (challenge) => challenge.id !== challengeId,
-      ),
-    };
+  const removeChallenge = async (challengeId: number) => {
+    if (!selectedEvaluationId) return;
 
-    setEvaluationForm(updatedForm);
-    setEvaluationErrors(validateEvaluation(updatedForm));
-    setActionMessage('Reto quitado de la evaluación.');
+    const confirmDelete = window.confirm(
+      '¿Estás seguro de que deseas eliminar este reto?',
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      setActionMessage('Eliminando reto...');
+
+      await evaluationChallengeApi.removeAssociation(
+        selectedEvaluationId.toString(),
+        challengeId.toString(),
+        token!,
+      );
+
+      await challengeApi.remove(challengeId.toString(), token!);
+
+      const updatedChallenges = evaluationForm.challenges.filter(
+        (ch) => ch.id !== challengeId,
+      );
+
+      setEvaluationForm({
+        ...evaluationForm,
+        challenges: updatedChallenges,
+      });
+
+      setActionMessage('Reto eliminado correctamente.');
+
+      loadData();
+    } catch (error: any) {
+      console.error('Error al eliminar el reto:', error);
+      setActionMessage(
+        error.response?.data?.message ||
+          'No se pudo eliminar el reto completamente.',
+      );
+    }
   };
 
   const clearForm = () => {
@@ -628,9 +680,11 @@ export default function EvaluationsAndChallengesPage() {
       challenges: evaluation.challenges || [],
     });
 
-    setSelectedEvaluationId(null);
+    const formElement = document.querySelector('.eval-form-panel');
 
-    // Scroll suave hacia el formulario
+    setTimeout(() => {
+      formElement?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   const handleDelete = async (id: string) => {
@@ -675,6 +729,7 @@ export default function EvaluationsAndChallengesPage() {
     }
   };
   const handleOpenDetail = (evaluationId: number) => {
+    setEditingChallengeId(null);
     setSelectedEvaluationId(evaluationId);
 
     setTimeout(() => {
@@ -683,6 +738,46 @@ export default function EvaluationsAndChallengesPage() {
         block: 'start',
       });
     }, 50);
+  };
+
+  const [editingChallengeId, setEditingChallengeId] = useState<number | null>(
+    null,
+  );
+
+  const handleEditChallenge = (
+    evaluation: Evaluation,
+    challenge: Challenge,
+  ) => {
+    setEditingEvaluationId(evaluation.id);
+    setEditingChallengeId(challenge.id);
+
+    setChallengeForm({
+      title: challenge.title,
+      description: challenge.description,
+      difficulty: challenge.difficulty,
+      databaseEngine: challenge.databaseEngine,
+      visibility: challenge.visibility,
+      schemaDefinition: challenge.schemaDefinition,
+      seedScript: challenge.seedScript,
+      expectedResult: {
+        resultCount: challenge.expectedResult.resultCount,
+      },
+      timeLimitMs: challenge.timeLimitMs,
+      points: (challenge as any).points || 0,
+    });
+
+    setTimeout(() => {
+      const formElement = document.querySelector('.eval-challenge-form-card');
+
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: 'smooth',
+        });
+      }
+    }, 100);
   };
 
   const handleStudentSolutionChange = (challengeId: number, query: string) => {
@@ -773,12 +868,6 @@ export default function EvaluationsAndChallengesPage() {
           </article>
 
           <article className="eval-metric-card">
-            <h3>Evaluaciones activas</h3>
-            <strong>{activeEvaluations}</strong>
-            <p>Evaluaciones disponibles actualmente.</p>
-          </article>
-
-          <article className="eval-metric-card">
             <h3>Retos publicados</h3>
             <strong>{publishedChallenges}</strong>
             <p>Retos SQL disponibles para estudiantes.</p>
@@ -851,14 +940,35 @@ export default function EvaluationsAndChallengesPage() {
 
                 return (
                   <article className="eval-detail-challenge" key={challenge.id}>
-                    <div className="eval-challenge-title-row">
-                      <strong>{challenge.title}</strong>
+                    <div className="eval-challenge-upper-row">
+                      <div className="eval-challenge-title-row">
+                        <strong>{challenge.title}</strong>
 
-                      <span
-                        className={`eval-challenge-status ${challenge.visibility.toLowerCase()}`}
-                      >
-                        {getChallengeStatusLabel(challenge.visibility)}
-                      </span>
+                        <span
+                          className={`eval-challenge-status ${challenge.visibility.toLowerCase()}`}
+                        >
+                          {getChallengeStatusLabel(challenge.visibility)}
+                        </span>
+                      </div>
+
+                      <div>
+                        <button
+                          type="button"
+                          className="eval-secondary-btn"
+                          onClick={() =>
+                            handleEditChallenge(selectedEvaluation, challenge)
+                          }
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="eval-danger-btn"
+                          onClick={() => removeChallenge(challenge.id)}
+                        >
+                          Eliminar
+                        </button>
+                      </div>
                     </div>
 
                     <p>{challenge.description}</p>
@@ -867,7 +977,6 @@ export default function EvaluationsAndChallengesPage() {
                       <span>{challenge.databaseEngine}</span>
                       <span>{challenge.timeLimitMs} ms</span>
                       <span>{getDifficultyLabel(challenge.difficulty)}</span>
-                      <span>{challenge.points} pts</span>
                     </div>
 
                     {!isStudent && (
@@ -1292,7 +1401,7 @@ export default function EvaluationsAndChallengesPage() {
                       className="eval-secondary-btn add-btn"
                       onClick={addChallenge}
                     >
-                      Agregar reto
+                      {editingChallengeId ? 'Guardar Cambios' : 'Agregar Reto'}
                     </button>
 
                     {evaluationErrors.challenges && (
@@ -1319,14 +1428,6 @@ export default function EvaluationsAndChallengesPage() {
                                 {getChallengeStatusLabel(challenge.visibility)}
                               </small>
                             </div>
-
-                            <button
-                              type="button"
-                              className="eval-danger-btn"
-                              onClick={() => removeChallenge(challenge.id)}
-                            >
-                              Quitar
-                            </button>
                           </article>
                         ))}
                       </div>
@@ -1437,8 +1538,6 @@ export default function EvaluationsAndChallengesPage() {
                           <span>
                             {getDifficultyLabel(challenge.difficulty)}
                           </span>
-
-                          <span>{challenge.points} pts</span>
 
                           <span>
                             {challenge.expectedResult.resultCount} filas
