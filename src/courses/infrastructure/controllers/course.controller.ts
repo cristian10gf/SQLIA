@@ -38,7 +38,7 @@ export class CourseController {
     @ApiOperation({ summary: 'Crear un nuevo curso' })
     @ApiResponse({ type: CreateCourseDto })
     @ApiBearerAuth()
-    @Roles(Role.PROFESSOR)
+    @Roles(Role.PROFESSOR, Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async createCourse(@Body() createCourseDto: CreateCourseDto) {
         const course = await this.createUseCase.execute(createCourseDto);

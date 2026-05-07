@@ -354,10 +354,6 @@ export function CoursesPage() {
     }
   };
 
-  const handleViewChallenges = () => {
-    setMessage('La pantalla de retos SQL se implementará en el siguiente paso.');
-  };
-
   const handleLogout = () => {
     authStorage.clearSession();
     navigate('/login', { replace: true });
@@ -489,7 +485,9 @@ export function CoursesPage() {
                   type="text"
                   placeholder="Grupo 1"
                   value={form.group}
-                  onChange={(event) => handleChange('group', event.target.value)}
+                  onChange={(event) =>
+                    handleChange('group', event.target.value)
+                  }
                   className={errors.group ? 'input-error' : ''}
                 />
                 {errors.group && (
@@ -575,7 +573,7 @@ export function CoursesPage() {
         {isLoading && (
           <div className="courses-empty-state">
             <h2>Cargando cursos...</h2>
-            <p>Estamos consultando la información del backend.</p>
+            <p>Estamos consultando la información.</p>
           </div>
         )}
 
@@ -583,7 +581,14 @@ export function CoursesPage() {
           <div className="courses-list">
             {visibleCourses.map((course) => (
               <article className="course-card" key={course.id}>
-                <div className="course-card-main">
+                <div
+                  className="course-card-main"
+                  onClick={() =>
+                    navigate(`/courses/evaluations-challenges/${course.id}`)
+                  }
+                  style={{ cursor: 'pointer' }}
+                  title="Ver evaluaciones de este curso"
+                >
                   <div>
                     <span className="course-code">{course.code}</span>
                     <h2>{course.name}</h2>
@@ -600,30 +605,27 @@ export function CoursesPage() {
 
                   {canManageCourse && (
                     <>
-                      <button type="button" onClick={() => openEditForm(course)}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditForm(course);
+                        }}
+                      >
                         Editar curso
                       </button>
 
                       <button
                         type="button"
                         className="danger-action"
-                        onClick={() => void handleDelete(course.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDelete(course.id);
+                        }}
                       >
                         Eliminar curso
                       </button>
                     </>
-                  )}
-
-                  {role === 'PROFESSOR' && (
-                    <button type="button" onClick={handleViewChallenges}>
-                      Crear reto
-                    </button>
-                  )}
-
-                  {role === 'STUDENT' && (
-                    <button type="button" onClick={handleViewChallenges}>
-                      Ver retos
-                    </button>
                   )}
                 </div>
               </article>

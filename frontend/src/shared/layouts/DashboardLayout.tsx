@@ -21,23 +21,20 @@ const menuByRole: Record<DashboardRole, MenuItem[]> = {
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Usuarios', path: '/dashboard/users' },
     { label: 'Profesores', path: '/dashboard/professors' },
-    { label: 'Cursos', path: '/dashboard/courses' },
+    { label: 'Cursos', path: '/courses' },
     { label: 'Reportes', path: '/dashboard/reports' },
   ],
 
   PROFESSOR: [
     { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Mis cursos', path: '/dashboard/courses' },
-    { label: 'Retos SQL', path: '/dashboard/challenges' },
-    { label: 'Evaluaciones', path: '/dashboard/evaluations' },
-    { label: 'Submissions', path: '/dashboard/submissions' },
+    { label: 'Mis cursos', path: '/courses' },
+    { label: 'Entregas', path: '/dashboard/submissions' },
     { label: 'Reportes', path: '/dashboard/reports' },
   ],
 
   STUDENT: [
     { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Mis cursos', path: '/dashboard/courses' },
-    { label: 'Retos disponibles', path: '/dashboard/challenges' },
+    { label: 'Mis cursos', path: '/courses' },
     { label: 'Mis resultados', path: '/dashboard/results' },
     { label: 'Recomendaciones', path: '/dashboard/recommendations' },
   ],
@@ -99,11 +96,6 @@ export function DashboardLayout({
             </NavLink>
           ))}
         </nav>
-
-        <div className="sidebar-footer">
-          <span>Rol actual</span>
-          <strong>{roleLabel[role]}</strong>
-        </div>
       </aside>
 
       <div className="dashboard-main">
