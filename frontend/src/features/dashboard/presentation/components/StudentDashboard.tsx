@@ -9,7 +9,6 @@ type StudentDashboardProps = {
 export function StudentDashboard({
   courseCount,
   isLoading,
-  error,
 }: StudentDashboardProps) {
   return (
     <section className="dashboard-role-section">
@@ -17,8 +16,6 @@ export function StudentDashboard({
         <span>Panel del estudiante</span>
         <h1>Cursos, retos SQL y resultados</h1>
       </div>
-
-      {error && <p className="dashboard-error-message">{error}</p>}
 
       <div className="stats-grid">
         <article className="stat-card">

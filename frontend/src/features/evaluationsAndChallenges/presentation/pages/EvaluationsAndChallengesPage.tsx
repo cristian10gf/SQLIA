@@ -1295,13 +1295,6 @@ export default function EvaluationsAndChallengesPage() {
                       ? 'Evaluaciones registradas'
                       : 'Retos SQL disponibles'}
                 </h2>
-                <p>
-                  {isAdmin
-                    ? 'El administrador solo consulta información general.'
-                    : isProfessor
-                      ? 'Las tarjetas muestran solo información principal. El detalle muestra la información completa.'
-                      : 'Por defecto se muestran los retos disponibles. Puedes cambiar el filtro para ver otros.'}
-                </p>
               </div>
             </div>
 
