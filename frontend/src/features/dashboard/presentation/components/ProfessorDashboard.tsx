@@ -31,7 +31,7 @@ export function ProfessorDashboard({
       <div className="dashboard-panel">
         <div className="panel-header">
           <h2>Gestión académica</h2>
-          <Link to="/dashboard/courses">Administrar cursos</Link>
+          <Link to="/courses">Administrar cursos</Link>
         </div>
       </div>
     </section>
