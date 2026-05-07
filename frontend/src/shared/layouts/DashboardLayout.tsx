@@ -21,20 +21,20 @@ const menuByRole: Record<DashboardRole, MenuItem[]> = {
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Usuarios', path: '/dashboard/users' },
     { label: 'Profesores', path: '/dashboard/professors' },
-    { label: 'Cursos', path: '/dashboard/courses' },
+    { label: 'Cursos', path: '/courses' },
     { label: 'Reportes', path: '/dashboard/reports' },
   ],
 
   PROFESSOR: [
     { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Mis cursos', path: '/dashboard/courses' },
+    { label: 'Mis cursos', path: '/courses' },
     { label: 'Entregas', path: '/dashboard/submissions' },
     { label: 'Reportes', path: '/dashboard/reports' },
   ],
 
   STUDENT: [
     { label: 'Dashboard', path: '/dashboard' },
-    { label: 'Mis cursos', path: '/dashboard/courses' },
+    { label: 'Mis cursos', path: '/courses' },
     { label: 'Mis resultados', path: '/dashboard/results' },
     { label: 'Recomendaciones', path: '/dashboard/recommendations' },
   ],

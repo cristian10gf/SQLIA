@@ -584,7 +584,7 @@ export function CoursesPage() {
                 <div
                   className="course-card-main"
                   onClick={() =>
-                    navigate(`/dashboard/evaluations-challenges/${course.id}`)
+                    navigate(`/courses/evaluations-challenges/${course.id}`)
                   }
                   style={{ cursor: 'pointer' }}
                   title="Ver evaluaciones de este curso"
