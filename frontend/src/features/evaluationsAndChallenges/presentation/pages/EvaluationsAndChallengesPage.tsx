@@ -58,7 +58,7 @@ const emptyChallenge: Omit<Challenge, 'id'> = {
   points: 10,
   schemaDefinition: sampleSchemaSql,
   seedScript: sampleInitialDataSql,
-  expectedResult: { resultCount: 0 },
+  expectedResult: '',
 };
 
 const emptyEvaluation: Omit<Evaluation, 'id'> = {
@@ -441,11 +441,18 @@ export default function EvaluationsAndChallengesPage() {
         'Los datos iniciales deben incluir al menos una sentencia INSERT INTO.';
     }
 
-    const resultCount = challenge.expectedResult.resultCount;
-    if (isNaN(resultCount) || resultCount < 0) {
-      errors.expectedResult = 'Debe ser un número de filas válido';
-    }
+    const result = challenge.expectedResult;
 
+    if (!result || (typeof result === 'string' && !result.trim())) {
+      errors.expectedResult = 'El resultado esperado es obligatorio.';
+    } else if (typeof result === 'string') {
+      try {
+        JSON.parse(result);
+      } catch (e) {
+        errors.expectedResult =
+          'El formato JSON es inválido. Revisa las comas y comillas.';
+      }
+    }
     return errors;
   };
 
@@ -506,14 +513,39 @@ export default function EvaluationsAndChallengesPage() {
     }
 
     try {
+      let finalExpectedResult = challengeForm.expectedResult;
+
+      if (typeof finalExpectedResult === 'string') {
+        try {
+          const parsed = JSON.parse(finalExpectedResult);
+
+          if (
+            parsed &&
+            typeof parsed === 'object' &&
+            !Array.isArray(parsed) &&
+            parsed.data
+          ) {
+            finalExpectedResult = parsed;
+          } else if (Array.isArray(parsed)) {
+            finalExpectedResult = {
+              data: parsed,
+              rowCount: parsed.length,
+            };
+          } else {
+            finalExpectedResult = parsed;
+          }
+        } catch (e) {
+          setChallengeErrors({ ...errors, expectedResult: 'JSON inválido' });
+          return;
+        }
+      }
+
       const { points, ...challengeData } = challengeForm;
 
       const challengePayload = {
         ...challengeData,
+        expectedResult: finalExpectedResult,
         courseId: courseId,
-        expectedResult: {
-          resultCount: Number(challengeForm.expectedResult.resultCount),
-        },
         timeLimitMs: Number(challengeForm.timeLimitMs),
       };
 
@@ -541,6 +573,8 @@ export default function EvaluationsAndChallengesPage() {
         }));
         setActionMessage('Reto actualizado correctamente');
       } else {
+        console.log('TIPO DE DATO:', typeof challengePayload.expectedResult);
+        console.log('CONTENIDO:', challengePayload.expectedResult);
         const challengeRes: any = await challengeApi.create(
           challengePayload,
           token!,
@@ -556,6 +590,7 @@ export default function EvaluationsAndChallengesPage() {
           },
           token!,
         );
+
         const challengeWithPoints = { ...newChallenge, points: Number(points) };
 
         setEvaluationForm({
@@ -565,7 +600,6 @@ export default function EvaluationsAndChallengesPage() {
 
         setChallengeForm(emptyChallenge);
         setChallengeErrors({});
-
         setActionMessage('Reto agregado correctamente a la evaluación.');
       }
 
@@ -576,22 +610,6 @@ export default function EvaluationsAndChallengesPage() {
         error.response?.data?.message || 'Error al crear el reto.',
       );
     }
-
-    const newChallenge: Challenge = {
-      id: Date.now(),
-      ...challengeForm,
-    };
-
-    const updatedForm = {
-      ...evaluationForm,
-      challenges: [...evaluationForm.challenges, newChallenge],
-    };
-
-    setEvaluationForm(updatedForm);
-    setChallengeForm(emptyChallenge);
-    setChallengeErrors({});
-    setEvaluationErrors(validateEvaluation(updatedForm));
-    setActionMessage('Reto agregado correctamente a la evaluación.');
   };
 
   const removeChallenge = async (challengeId: number) => {
@@ -787,9 +805,7 @@ export default function EvaluationsAndChallengesPage() {
       visibility: challenge.visibility,
       schemaDefinition: challenge.schemaDefinition,
       seedScript: challenge.seedScript,
-      expectedResult: {
-        resultCount: challenge.expectedResult.resultCount,
-      },
+      expectedResult: challenge.expectedResult,
       timeLimitMs: challenge.timeLimitMs,
       points: (challenge as any).points || 0,
     });
@@ -979,24 +995,26 @@ export default function EvaluationsAndChallengesPage() {
                         </span>
                       </div>
 
-                      <div>
-                        <button
-                          type="button"
-                          className="eval-secondary-btn"
-                          onClick={() =>
-                            handleEditChallenge(selectedEvaluation, challenge)
-                          }
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className="eval-danger-btn"
-                          onClick={() => removeChallenge(challenge.id)}
-                        >
-                          Eliminar
-                        </button>
-                      </div>
+                      {role === 'PROFESSOR' && (
+                        <div>
+                          <button
+                            type="button"
+                            className="eval-secondary-btn"
+                            onClick={() =>
+                              handleEditChallenge(selectedEvaluation, challenge)
+                            }
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            className="eval-danger-btn"
+                            onClick={() => removeChallenge(challenge.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <p>{challenge.description}</p>
@@ -1316,29 +1334,6 @@ export default function EvaluationsAndChallengesPage() {
                       </div>
 
                       <div className="eval-form-group">
-                        <label>Filas en el resultado</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={challengeForm.expectedResult.resultCount}
-                          onChange={(e) =>
-                            setChallengeForm({
-                              ...challengeForm,
-                              expectedResult: {
-                                resultCount: Number(e.target.value),
-                              },
-                            })
-                          }
-                          placeholder="Ej: 5"
-                        />
-                        {challengeErrors.expectedResult && (
-                          <span className="eval-error-text">
-                            {challengeErrors.expectedResult}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="eval-form-group">
                         <label>Límite de tiempo (ms)</label>
                         <input
                           type="number"
@@ -1354,6 +1349,44 @@ export default function EvaluationsAndChallengesPage() {
                         {challengeErrors.timeLimitMs && (
                           <span className="eval-error-text">
                             {challengeErrors.timeLimitMs}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="eval-form-group full">
+                        <label>Resultado esperado (JSON)</label>
+                        <textarea
+                          className={
+                            challengeErrors.expectedResult
+                              ? 'eval-input-error'
+                              : ''
+                          }
+                          rows={5}
+                          value={
+                            // Si es string, lo usamos tal cual
+                            typeof challengeForm.expectedResult === 'string'
+                              ? challengeForm.expectedResult
+                              : // Si no es string pero tiene contenido (no es null/undefined), lo serializamos
+                                challengeForm.expectedResult
+                                ? JSON.stringify(
+                                    challengeForm.expectedResult,
+                                    null,
+                                    2,
+                                  )
+                                : '' // En cualquier otro caso (inicial), string vacío para que no salga nada
+                          }
+                          onChange={(e) => {
+                            const newValue = e.target.value;
+                            setChallengeForm({
+                              ...challengeForm,
+                              expectedResult: newValue,
+                            });
+                          }}
+                          placeholder='[{"id": 1, "nombre": "Juan"}]'
+                        />
+                        {challengeErrors.expectedResult && (
+                          <span className="eval-error-text">
+                            {challengeErrors.expectedResult}
                           </span>
                         )}
                       </div>
@@ -1436,29 +1469,6 @@ export default function EvaluationsAndChallengesPage() {
                       <p className="eval-error-text block">
                         {evaluationErrors.challenges}
                       </p>
-                    )}
-
-                    {evaluationForm.challenges.length > 0 && (
-                      <div className="eval-selected-challenges">
-                        {evaluationForm.challenges.map((challenge) => (
-                          <article
-                            className="eval-selected-challenge"
-                            key={challenge.id}
-                          >
-                            <div>
-                              <strong>{challenge.title}</strong>
-                              <p>{challenge.description}</p>
-                              <small>
-                                {getDifficultyLabel(challenge.difficulty)} ·{' '}
-                                {challenge.points} puntos ·{' '}
-                                {challenge.expectedResult.resultCount} filas
-                                esperadas·{' '}
-                                {getChallengeStatusLabel(challenge.visibility)}
-                              </small>
-                            </div>
-                          </article>
-                        ))}
-                      </div>
                     )}
                   </div>
                 </>
@@ -1565,11 +1575,6 @@ export default function EvaluationsAndChallengesPage() {
 
                           <span>
                             {getDifficultyLabel(challenge.difficulty)}
-                          </span>
-
-                          <span>
-                            {challenge.expectedResult.resultCount} filas
-                            esperadas
                           </span>
 
                           {isStudent && (

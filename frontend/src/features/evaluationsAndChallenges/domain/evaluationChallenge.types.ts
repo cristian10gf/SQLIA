@@ -14,9 +14,7 @@ export interface Challenge {
   schemaDefinition: string;
   seedScript: string;
   points: number;
-  expectedResult: {
-    resultCount: number;
-  };
+  expectedResult: any[] | { data: any[]; rowCount?: number } | string;
   timeLimitMs: number;
 }
 
