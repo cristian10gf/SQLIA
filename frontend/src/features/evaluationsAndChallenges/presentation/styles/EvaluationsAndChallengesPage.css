@@ -246,7 +246,7 @@
 }
 
 .eval-metrics-grid-three {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .eval-metric-card {
@@ -688,6 +688,16 @@
 .eval-challenge-title-row {
   display: flex;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.eval-challenge-upper-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 6px;
