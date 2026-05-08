@@ -2,7 +2,12 @@ import { apiClient } from '../../../shared/infrastructure/http/apiClient';
 
 export const evaluationChallengeApi = {
   associate(
-    payload: { evaluationId: string; challengeId: string; order?: number },
+    payload: {
+      evaluationId: string;
+      challengeId: string;
+      points: number;
+      orderIndex: number;
+    },
     token: string,
   ) {
     return apiClient.post('/evaluation-challenges', payload, token);
@@ -12,6 +17,13 @@ export const evaluationChallengeApi = {
     const query = new URLSearchParams(params).toString();
     return apiClient.get(
       `/evaluation-challenges/evaluation/${evaluationId}?${query}`,
+      token,
+    );
+  },
+
+  listByEvaluationForStudent(evaluationId: string, token: string) {
+    return apiClient.get(
+      `/evaluation-challenges/evaluation/${evaluationId}/visible`,
       token,
     );
   },
