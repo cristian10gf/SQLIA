@@ -136,9 +136,13 @@ function isChallengeAvailableForStudent(
   evaluation: Evaluation,
   challenge: Challenge,
 ) {
-  return evaluation.status === 'ACTIVE' && challenge.visibility === 'PUBLIC';
-}
+  const now = new Date();
+  const start = new Date(evaluation.startDate);
+  const end = new Date(evaluation.endDate);
+  const isEvaluationOpen = now >= start && now <= end;
 
+  return isEvaluationOpen && challenge.visibility === 'PUBLIC';
+}
 export default function EvaluationsAndChallengesPage() {
   const { courseId } = useParams<{ courseId: string }>();
 
@@ -165,18 +169,23 @@ export default function EvaluationsAndChallengesPage() {
           ? await evaluationApi.listForProfessor(courseId, { limit: 10 }, token)
           : await evaluationApi.listVisibleForStudent(courseId, 1, 10, token);
 
-      const rawData = role === 'PROFESSOR' ? response?.data : response;
+      const rawData = response?.data || response;
       const evaluationsData = Array.isArray(rawData) ? rawData : [];
 
       const enrichedEvaluations = await Promise.all(
         evaluationsData.map(async (ev: Evaluation) => {
           try {
             const challengesRes: any =
-              await evaluationChallengeApi.listByEvaluation(
-                ev.id.toString(),
-                {},
-                token,
-              );
+              role === 'PROFESSOR'
+                ? await evaluationChallengeApi.listByEvaluation(
+                    ev.id.toString(),
+                    {},
+                    token,
+                  )
+                : await evaluationChallengeApi.listByEvaluationForStudent(
+                    ev.id.toString(),
+                    token,
+                  );
             return { ...ev, challenges: challengesRes.data || [] };
           } catch {
             return { ...ev, challenges: [] };
@@ -279,23 +288,31 @@ export default function EvaluationsAndChallengesPage() {
   }, [evaluations, isStudent, studentFilter]);
 
   const filteredEvaluations = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
+    // 1. Si es profesor, no filtramos nada
+    if (role === 'PROFESSOR') return evaluations;
 
-    if (!normalizedSearch) return visibleEvaluations;
+    // 2. Si es estudiante, aplicamos lógica según el selector
+    return evaluations.filter((ev) => {
+      // Si el filtro es ALL, confiamos en lo que mandó la API y mostramos todo
+      if (studentFilter === 'ALL') return true;
 
-    return visibleEvaluations.filter((evaluation) => {
-      return (
-        evaluation.title.toLowerCase().includes(normalizedSearch) ||
-        evaluation.courseName.toLowerCase().includes(normalizedSearch)
-      );
+      const now = new Date();
+      const start = new Date(ev.startDate);
+      const end = new Date(ev.endDate);
+      const isAvailable = now >= start && now <= end;
+
+      if (studentFilter === 'AVAILABLE') return isAvailable;
+      if (studentFilter === 'UNAVAILABLE') return !isAvailable;
+
+      return true;
     });
-  }, [searchTerm, visibleEvaluations]);
+  }, [evaluations, studentFilter, role]);
 
   const selectedEvaluation = useMemo(() => {
     if (!selectedEvaluationId) return null;
 
     return (
-      visibleEvaluations.find(
+      evaluations.find(
         (evaluation) => evaluation.id === selectedEvaluationId,
       ) || null
     );
@@ -751,6 +768,17 @@ export default function EvaluationsAndChallengesPage() {
     setEditingEvaluationId(evaluation.id);
     setEditingChallengeId(challenge.id);
 
+    setEvaluationForm({
+      title: evaluation.title,
+      description: evaluation.description,
+      startDate: evaluation.startDate.split('T')[0],
+      endDate: evaluation.endDate.split('T')[0],
+      status: evaluation.status,
+      durationMinutes: evaluation.durationMinutes || 60,
+      maxAttempts: evaluation.maxAttempts || 1,
+      courseName: evaluation.courseName || '',
+      challenges: evaluation.challenges || [],
+    });
     setChallengeForm({
       title: challenge.title,
       description: challenge.description,

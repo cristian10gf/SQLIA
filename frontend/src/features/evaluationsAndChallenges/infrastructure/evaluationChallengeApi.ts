@@ -21,6 +21,13 @@ export const evaluationChallengeApi = {
     );
   },
 
+  listByEvaluationForStudent(evaluationId: string, token: string) {
+    return apiClient.get(
+      `/evaluation-challenges/evaluation/${evaluationId}/visible`,
+      token,
+    );
+  },
+
   updateAssociation(
     evaluationId: string,
     challengeId: string,
