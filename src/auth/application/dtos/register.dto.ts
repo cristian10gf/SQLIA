@@ -24,7 +24,11 @@ export class RegisterDto {
   @MinLength(5)
   fullName: string;
 
-  @ApiProperty({ enum: Role, example: Role.STUDENT })
+  @ApiProperty({
+    enum: Role,
+    example: Role.STUDENT,
+    description: 'El rol del usuario',
+  })
   @IsEnum(Role)
   role: Role;
 }

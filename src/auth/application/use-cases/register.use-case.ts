@@ -8,6 +8,8 @@ import { User } from '../../domain/entities/user.entity';
 import { AuthResponseDto } from '../dtos/auth-response.dto';
 import { EmailAlreadyRegisteredError } from '../../domain/errors/email-already-registered.error';
 import { AuthResponseMapper } from '../mappers/auth-response.mapper';
+import { AdminRegistrationForbiddenError } from '../../domain/errors/admin-registration-forbidden.error';
+import { Role } from '../../domain/enums/role.enum';
 
 @Injectable()
 export class RegisterUseCase {
@@ -18,6 +20,9 @@ export class RegisterUseCase {
   ) {}
 
   async execute(registerDto: RegisterDto): Promise<AuthResponseDto> {
+    if (registerDto.role === Role.ADMIN) {
+      throw new AdminRegistrationForbiddenError();
+    }
     const existingUser = await this.userRepository.findByEmail(
       registerDto.email,
     );

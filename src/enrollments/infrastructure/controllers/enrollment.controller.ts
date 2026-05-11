@@ -10,7 +10,13 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { CreateEnrollmentUseCase } from '../../application/use-cases/create-enrollment.use-case';
 import { CreateEnrollmentDto } from '../../application/dtos/create-enrollment.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -38,7 +44,7 @@ export class EnrollmentController {
   @ApiOperation({ summary: 'Inscribir a un estudiante en un curso' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiResponse({ type: CreateEnrollmentDto })
   async enroll(@Body() dto: CreateEnrollmentDto) {
     const result = await this.createEnrollmentUseCase.execute(dto);
@@ -49,11 +55,16 @@ export class EnrollmentController {
   }
 
   @Delete(':courseId/students/:studentId')
-  @ApiOperation({ summary: 'Eliminar inscripción de un estudiante en un curso' })
+  @ApiOperation({
+    summary: 'Eliminar inscripción de un estudiante en un curso',
+  })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.PROFESSOR, Role.ADMIN)
-  async remove(@Param('studentId') studentId: string, @Param('courseId') courseId: string) {
+  async remove(
+    @Param('studentId') studentId: string,
+    @Param('courseId') courseId: string,
+  ) {
     await this.deleteEnrollmentUseCase.execute(studentId, courseId);
     return { message: 'Inscripcion eliminada exitosamente' };
   }
@@ -61,27 +72,52 @@ export class EnrollmentController {
   @Get('course/:courseId/students')
   @ApiOperation({ summary: 'Listar estudiantes de un curso con paginacion' })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async studentsByCourse(@Param('courseId') courseId: string, @Query() pagination: PaginationDto) {
+  async studentsByCourse(
+    @Param('courseId') courseId: string,
+    @Query() pagination: PaginationDto,
+  ) {
     return await this.findStudentsByCourseUseCase.execute(courseId, pagination);
   }
 
   @Get('student/:studentId/courses')
-  @ApiOperation({ summary: 'Listar cursos en los que está inscrito un estudiante con paginacion' })
+  @ApiOperation({
+    summary:
+      'Listar cursos en los que está inscrito un estudiante con paginacion',
+  })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async coursesByStudent(@Param('studentId') studentId: string, @Query() pagination: PaginationDto) {
-    return await this.findCoursesByStudentUseCase.execute(studentId, pagination);
+  async coursesByStudent(
+    @Param('studentId') studentId: string,
+    @Query() pagination: PaginationDto,
+  ) {
+    return await this.findCoursesByStudentUseCase.execute(
+      studentId,
+      pagination,
+    );
   }
 
   @Get('professor/:professorId/courses')
-  @ApiOperation({ summary: 'Listar cursos asignados a un profesor con paginacion' })
+  @ApiOperation({
+    summary: 'Listar cursos asignados a un profesor con paginacion',
+  })
   @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async coursesByProfessor(@Param('professorId') professorId: string, @Query() pagination: PaginationDto) {
-    return await this.findCoursesByProfessorUseCase.execute(professorId, pagination);
+  async coursesByProfessor(
+    @Param('professorId') professorId: string,
+    @Query() pagination: PaginationDto,
+  ) {
+    return await this.findCoursesByProfessorUseCase.execute(
+      professorId,
+      pagination,
+    );
   }
 }

@@ -38,7 +38,7 @@ export class CourseController {
     @ApiOperation({ summary: 'Crear un nuevo curso' })
     @ApiResponse({ type: CreateCourseDto })
     @ApiBearerAuth()
-    @Roles(Role.PROFESSOR)
+    @Roles(Role.PROFESSOR, Role.ADMIN)
     @UseGuards(JwtAuthGuard, RolesGuard)
     async createCourse(@Body() createCourseDto: CreateCourseDto) {
         const course = await this.createUseCase.execute(createCourseDto);
@@ -65,6 +65,7 @@ export class CourseController {
     @ApiOperation({ summary: 'Obtener un curso por ID' })
     @ApiResponse({ type: CreateCourseDto })
     @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles( Role.PROFESSOR, Role.ADMIN)
     async findOne(@Param('id', ParseUUIDPipe) id: string) {
         return await this.findByIdUseCase.execute(id);
@@ -74,6 +75,7 @@ export class CourseController {
     @ApiOperation({ summary: 'Actualizar un curso' })
     @ApiResponse({ type: CreateCourseDto })
     @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.PROFESSOR, Role.ADMIN)
     async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CreateCourseDto) {
         await this.updateUseCase.execute(id, dto);
@@ -84,6 +86,7 @@ export class CourseController {
     @ApiOperation({ summary: 'Eliminar un curso' })
     @ApiResponse({ type: CreateCourseDto })
     @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(Role.PROFESSOR, Role.ADMIN)
     async remove(@Param('id', ParseUUIDPipe) id: string) {
         await this.deleteUseCase.execute(id);
