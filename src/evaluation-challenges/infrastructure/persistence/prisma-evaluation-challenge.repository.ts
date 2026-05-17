@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ChallengeVisibility } from '@prisma/client';
 import { Challenge } from '../../../challenges/domain/entities/challenge.entity';
+import { ChallengeMapper } from '../../../challenges/infrastructure/mappers/challenge.mapper';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { EvaluationChallenge } from '../../domain/entities/evaluation-challenge.entity';
 import { IEvaluationChallengeRepository } from '../../domain/repositories/evaluation-challenge.repository.interface';
+import { EvaluationChallengeMapper } from '../mappers/evaluation-challenge.mapper';
 
 @Injectable()
 export class PrismaEvaluationChallengeRepository implements IEvaluationChallengeRepository {
@@ -23,7 +25,7 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
       },
     });
 
-    return this.mapToDomain(savedModel);
+    return EvaluationChallengeMapper.toDomain(savedModel);
   }
 
   async findByEvaluationAndChallenge(evaluationId: string, challengeId: string): Promise<EvaluationChallenge | null> {
@@ -39,7 +41,7 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
       },
     });
 
-    return model ? this.mapToDomain(model) : null;
+    return model ? EvaluationChallengeMapper.toDomain(model) : null;
   }
 
   async findByEvaluation(
@@ -69,7 +71,7 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
     ]);
 
     return {
-      data: models.map((model) => this.mapChallengeToDomain(model.challenge)),
+      data: models.map((model) => ChallengeMapper.toDomain(model.challenge)),
       total,
     };
   }
@@ -95,7 +97,7 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
       },
     });
 
-    return this.mapToDomain(updated);
+    return EvaluationChallengeMapper.toDomain(updated);
   }
 
   async delete(evaluationId: string, challengeId: string): Promise<void> {
@@ -113,33 +115,5 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
     await this.prisma.evaluationChallenge.deleteMany({
       where: { challengeId },
     });
-  }
-
-  private mapToDomain(model: any): EvaluationChallenge {
-    return new EvaluationChallenge(
-      model.evaluationId,
-      model.challengeId,
-      model.orderIndex,
-      model.points,
-    );
-  }
-
-  private mapChallengeToDomain(model: any): Challenge {
-    return new Challenge(
-      model.id,
-      model.createdBy,
-      model.courseId,
-      model.title,
-      model.description,
-      model.difficulty,
-      model.visibility,
-      model.databaseEngine,
-      model.schemaDefinition,
-      model.seedScript,
-      model.expectedResult ?? {},
-      model.timeLimitMs,
-      model.status,
-      model.createdAt,
-    );
   }
 }
