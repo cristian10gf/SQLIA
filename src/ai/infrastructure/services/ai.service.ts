@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import { IAiProvider } from '../../domain/interfaces/ai-provider.interface';
+import { IAiProvider } from '../../../ai/domain/repositories/ai-provider.repository';
 
 @Injectable()
 export class AiService implements IAiProvider {

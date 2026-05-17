@@ -10,7 +10,7 @@ import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { EvaluationChallengesModule } from './evaluation-challenges/evaluation-challenges.module';
-import { SubmissionsModule } from './submissions/submission.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -28,7 +28,7 @@ import { SubmissionsModule } from './submissions/submission.module';
     EvaluationsModule,
     ChallengesModule,
     EvaluationChallengesModule,
-    SubmissionsModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],
