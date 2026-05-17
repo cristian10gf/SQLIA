@@ -1,0 +1,84 @@
+# Stack dev: Postgres + Redis en localhost (API con `npm run start:dev` en el host).
+# Opción "todo en Docker": perfil `full-docker` (servicio `api`).
+#
+# Variables: pasá `--env-file .env.dev` (copiá desde `.env.dev.example`).
+#
+#   docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
+#
+# API opcional en contenedor:
+#   docker compose --env-file .env.dev -f docker-compose.dev.yml --profile full-docker up -d
+
+services:
+  postgres:
+    image: postgres:${POSTGRES_IMAGE_TAG:-15-alpine}
+    container_name: sqlia-postgres-dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - ./.db-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:${REDIS_IMAGE_TAG:-7-alpine}
+    container_name: sqlia-redis-dev
+    command:
+      - redis-server
+      - --appendonly
+      - 'no'
+      - --maxmemory-policy
+      - noeviction
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-256mb}
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    profiles:
+      - full-docker
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: sqlia-api-dev
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${PORT:-3000}
+      AI_URL: ${AI_URL:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+    ports:
+      - '${API_PORT:-3000}:3000'
+    volumes:
+      - .:/app
+      - api_node_modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  api_node_modules:
