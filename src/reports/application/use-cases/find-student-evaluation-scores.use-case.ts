@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { PaginationDto } from '../dtos/pagination.dto';
 import { REPORT_REPOSITORY } from '../../domain/repositories/report.repository.interface';
 import type { IReportRepository } from '../../domain/repositories/report.repository.interface';
 
@@ -14,7 +15,12 @@ export class FindStudentEvaluationScoresUseCase {
     private readonly reportRepository: IReportRepository,
   ) {}
 
-  async execute(courseId: string, studentId: string, professorId: string) {
+  async execute(
+    courseId: string,
+    studentId: string,
+    professorId: string,
+    pagination?: PaginationDto,
+  ) {
     const courseOwnership = await this.reportRepository.findCourseOwnership(courseId);
 
     if (!courseOwnership) {
@@ -30,15 +36,23 @@ export class FindStudentEvaluationScoresUseCase {
       throw new NotFoundException('El estudiante no está inscrito en este curso');
     }
 
-    const data = await this.reportRepository.findStudentEvaluationScoresByCourse(
+    const { page = 1, limit = 10 } = pagination || {};
+    const skip = (page - 1) * limit;
+
+    const { data, total } = await this.reportRepository.findStudentEvaluationScoresByCourse(
       courseId,
       studentId,
+      skip,
+      limit,
     );
 
     return {
       courseId,
       studentId,
-      total: data.length,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
       data,
     };
   }

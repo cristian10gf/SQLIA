@@ -42,39 +42,51 @@ export class PrismaReportRepository implements IReportRepository {
   async findStudentEvaluationScoresByCourse(
     courseId: string,
     studentId: string,
-  ): Promise<StudentEvaluationScoreReadModel[]> {
-    const submissions = await this.prisma.submission.findMany({
-      where: {
-        studentId,
-        evaluationId: {
-          not: null,
-        },
-        evaluation: {
-          courseId,
-        },
+    skip: number,
+    take: number,
+  ): Promise<{ data: StudentEvaluationScoreReadModel[]; total: number }> {
+    const where = {
+      studentId,
+      evaluationId: {
+        not: null,
       },
-      include: {
-        evaluation: {
-          select: {
-            id: true,
-            title: true,
+      evaluation: {
+        courseId,
+      },
+    };
+
+    const [submissions, total] = await Promise.all([
+      this.prisma.submission.findMany({
+        where,
+        include: {
+          evaluation: {
+            select: {
+              id: true,
+              title: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take,
+      }),
+      this.prisma.submission.count({ where }),
+    ]);
 
-    return submissions.map((submission) => ({
-      submissionId: submission.id,
-      evaluation: {
-        id: submission.evaluation?.id ?? submission.evaluationId ?? '',
-        title: submission.evaluation?.title ?? 'Sin evaluacion',
-      },
-      score: submission.score !== null ? Number(submission.score) : null,
-      status: submission.status as SubmissionStatusValue,
-      submittedAt: submission.createdAt,
-    }));
+    return {
+      total,
+      data: submissions.map((submission) => ({
+        submissionId: submission.id,
+        evaluation: {
+          id: submission.evaluation?.id ?? submission.evaluationId ?? '',
+          title: submission.evaluation?.title ?? 'Sin evaluacion',
+        },
+        score: submission.score !== null ? Number(submission.score) : null,
+        status: submission.status as SubmissionStatusValue,
+        submittedAt: submission.createdAt,
+      })),
+    };
   }
 }

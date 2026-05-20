@@ -11,5 +11,7 @@ export interface IReportRepository {
   findStudentEvaluationScoresByCourse(
     courseId: string,
     studentId: string,
-  ): Promise<StudentEvaluationScoreReadModel[]>;
+    skip: number,
+    take: number,
+  ): Promise<{ data: StudentEvaluationScoreReadModel[]; total: number }>;
 }
