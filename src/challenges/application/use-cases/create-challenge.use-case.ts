@@ -5,22 +5,22 @@ import type { IChallengeRepository } from '../../domain/repositories/challenge.r
 import { Challenge } from '../../domain/entities/challenge.entity';
 import { CreateChallengeDto } from '../dtos/create-challenge.dto';
 import { ChallengeStatus } from '../../domain/enums/challenge-status.enum';
-import { SqlRunnerService } from '../../../shared/infrastructure/services/sql-runner.service';
+import { SQL_EXECUTION_PORT } from '../../../shared/domain/interfaces/sql-execution.tokens';
+import type { ISqlExecutionPort } from '../../../shared/domain/interfaces/sql-execution.interface';
 
 @Injectable()
 export class CreateChallengeUseCase {
   constructor(
     @Inject(CHALLENGE_REPOSITORY)
     private readonly challengeRepository: IChallengeRepository,
-    private readonly sqlRunnerService: SqlRunnerService,
+    @Inject(SQL_EXECUTION_PORT) private readonly sqlExecution: ISqlExecutionPort,
   ) {}
 
   async execute(
     dto: CreateChallengeDto,
     createdBy: string,
   ): Promise<Challenge> {
-    //Verificar schema valido
-    await this.sqlRunnerService.runValidation(dto.schemaDefinition, dto.seedScript);
+    await this.sqlExecution.validateSchemaSeed(dto.schemaDefinition, dto.seedScript);
 
     const challenge = new Challenge(
       randomUUID(),
