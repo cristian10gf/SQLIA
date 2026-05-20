@@ -39,6 +39,15 @@ enum SubmissionStatus {
   OPTIMIZATION_REQUIRED
 }
 
+/** Estado del contenedor Postgres nombrado por reto (sandbox de larga duración). */
+enum ChallengeSandboxStatus {
+  PENDING
+  PROVISIONING
+  READY
+  ERROR
+  EXPIRED
+}
+
 enum DifficultyLevel {
   EASY
   MEDIUM
@@ -114,10 +123,40 @@ model Challenge {
   dataGenConfigs DataGenConfig[]
   evaluations    EvaluationChallenge[]
   submissions    Submission[]
+  sandbox        ChallengeSandbox?
 
   @@index([visibility], name: "idx_challenge_visibility")
   @@index([courseId], name: "idx_challenge_course")
   @@map("challenges")
+}
+
+/**
+ * Sandbox Docker por reto (1:1 con Challenge).
+ *
+ * expiresAt: máximo `endDate` entre evaluaciones que incluyen el reto vía `EvaluationChallenge`.
+ * Si no hay evaluaciones, el worker usa `SANDBOX_TTL_DAYS` (o `SANDBOX_DEFAULT_TTL_DAYS`)
+ * desde el momento del aprovisionamiento.
+ */
+model ChallengeSandbox {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  challengeId          String                 @unique @map("challenge_id") @db.Uuid
+  status               ChallengeSandboxStatus @default(PENDING)
+  dockerContainerName  String?                @map("docker_container_name")
+  hostPort             Int?                   @map("host_port")
+  dbUser               String?                @map("db_user")
+  dbPassword           String?                @map("db_password")
+  dbName               String?                @map("db_name")
+  /** Host desde el que los workers conectan (p. ej. 127.0.0.1 con puerto mapeado). */
+  connectionHost       String?                @map("connection_host")
+  expiresAt            DateTime?              @map("expires_at")
+  lastError            String?                @map("last_error")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([status], name: "idx_challenge_sandbox_status")
+  @@map("challenge_sandboxes")
 }
 
 model DataGenConfig {
@@ -175,7 +214,9 @@ model Submission {
   status          SubmissionStatus @default(QUEUED)
   executionTimeMs Int?             @map("execution_time_ms")
   score           Decimal?         @default(0) @db.Decimal
+  resultJson      Json?            @map("result_json")
   createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   student        User              @relation(fields: [studentId], references: [id])
   challenge      Challenge         @relation(fields: [challengeId], references: [id])
