@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Course } from '../../domain/entities/course.entity';
 import { ICourseRepository } from '../../domain/repositories/course.repository.interface';
+import { CourseMapper } from '../mappers/course.mapper';
 
 @Injectable()
 export class PrismaCourseRepository implements ICourseRepository {
@@ -18,7 +19,7 @@ export class PrismaCourseRepository implements ICourseRepository {
                 professorId: course.professorId,
             },
         });
-        return this.mapToDomain(savedModel);
+        return CourseMapper.toDomain(savedModel);
     }
 
     async findAll(skip: number, take: number): Promise<{ data: Course[], total: number }> {
@@ -31,7 +32,7 @@ export class PrismaCourseRepository implements ICourseRepository {
             this.prisma.course.count()
         ]);
 
-        const domainCourses = models.map((model) => this.mapToDomain(model));
+        const domainCourses = models.map((model) => CourseMapper.toDomain(model));
 
         return {
             data: domainCourses,
@@ -46,14 +47,14 @@ export class PrismaCourseRepository implements ICourseRepository {
         if (!model) {
             return null;
         }
-        return this.mapToDomain(model);
+        return CourseMapper.toDomain(model);
     }
 
     async findByCode(code: string): Promise<Course | null> {
         const model = await this.prisma.course.findUnique({
             where: { code: code },
         });
-        return model ? this.mapToDomain(model) : null;
+        return model ? CourseMapper.toDomain(model) : null;
     }
 
     async update(id: string, course: Partial<Course>): Promise<Course> {
@@ -67,23 +68,12 @@ export class PrismaCourseRepository implements ICourseRepository {
                 professorId: course.professorId,
             },
         });
-        return this.mapToDomain(updated);
+        return CourseMapper.toDomain(updated);
     }
 
     async delete(id: string): Promise<void> {
         await this.prisma.course.delete({
             where: { id: id },
         });
-    }
-
-    private mapToDomain(model: any): Course {
-        return new Course(
-            model.id,
-            model.name,
-            model.code,
-            model.period,
-            model.group,
-            model.professorId
-        );
     }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Evaluation } from '../../domain/entities/evaluation.entity';
 import { IEvaluationRepository } from '../../domain/repositories/evaluation.repository.interface';
+import { EvaluationMapper } from '../mappers/evaluation.mapper';
 
 @Injectable()
 export class PrismaEvaluationRepository implements IEvaluationRepository {
@@ -23,7 +24,7 @@ export class PrismaEvaluationRepository implements IEvaluationRepository {
       },
     });
 
-    return this.mapToDomain(savedModel);
+    return EvaluationMapper.toDomain(savedModel);
   }
 
   async findById(id: string): Promise<Evaluation | null> {
@@ -31,7 +32,7 @@ export class PrismaEvaluationRepository implements IEvaluationRepository {
       where: { id },
     });
 
-    return model ? this.mapToDomain(model) : null;
+    return model ? EvaluationMapper.toDomain(model) : null;
   }
 
   async findByCourse(courseId: string,skip: number,take: number,visibility?: boolean): Promise<{ data: Evaluation[]; total: number }> {
@@ -50,7 +51,7 @@ export class PrismaEvaluationRepository implements IEvaluationRepository {
     ]);
 
     return {
-      data: models.map((model) => this.mapToDomain(model)),
+      data: models.map((model) => EvaluationMapper.toDomain(model)),
       total,
     };
   }
@@ -69,7 +70,7 @@ export class PrismaEvaluationRepository implements IEvaluationRepository {
       },
     });
 
-    return this.mapToDomain(updated);
+    return EvaluationMapper.toDomain(updated);
   }
 
   async updateVisibility(id: string, isVisible: boolean): Promise<Evaluation> {
@@ -78,28 +79,12 @@ export class PrismaEvaluationRepository implements IEvaluationRepository {
       data: { isVisible },
     });
 
-    return this.mapToDomain(updated);
+    return EvaluationMapper.toDomain(updated);
   }
 
   async delete(id: string): Promise<void> {
     await this.prisma.evaluation.delete({
       where: { id },
     });
-  }
-
-  private mapToDomain(model: any): Evaluation {
-    return new Evaluation(
-      model.id,
-      model.courseId,
-      model.createdBy,
-      model.title,
-      model.description,
-      model.startDate,
-      model.endDate,
-      model.durationMinutes,
-      model.maxAttempts,
-      model.isVisible,
-      model.createdAt,
-    );
   }
 }
