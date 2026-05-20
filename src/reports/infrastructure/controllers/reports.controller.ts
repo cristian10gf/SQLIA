@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { User } from '../../../auth/domain/entities/user.entity';
 import { Role } from '../../../auth/domain/enums/role.enum';
+import { FindStudentSubmissionSummaryUseCase } from '../../application/use-cases/find-student-submission-summary.use-case';
 import { PaginationDto } from '../../application/dtos/pagination.dto';
 import { FindStudentEvaluationScoresUseCase } from '../../application/use-cases/find-student-evaluation-scores.use-case';
 
@@ -14,6 +15,7 @@ import { FindStudentEvaluationScoresUseCase } from '../../application/use-cases/
 export class ReportsController {
   constructor(
     private readonly findStudentEvaluationScoresUseCase: FindStudentEvaluationScoresUseCase,
+    private readonly findStudentSubmissionSummaryUseCase: FindStudentSubmissionSummaryUseCase,
   ) {}
 
   @Get('courses/:courseId/students/:studentId/submissions')
@@ -41,6 +43,29 @@ export class ReportsController {
     return {
       message: 'ok',
       data: result,
+    };
+  }
+
+  @Get('courses/:courseId/students/:studentId/summary')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR, Role.STUDENT)
+  @ApiOperation({ summary: 'Resumen de envios de un estudiante en un curso' })
+  async studentSubmissionSummary(
+    @Param('courseId', ParseUUIDPipe) courseId: string,
+    @Param('studentId', ParseUUIDPipe) studentId: string,
+    @CurrentUser() user: User,
+  ) {
+    const summary = await this.findStudentSubmissionSummaryUseCase.execute(
+      courseId,
+      studentId,
+      String(user.id),
+      String(user.role),
+    );
+
+    return {
+      message: 'ok',
+      data: summary,
     };
   }
 }

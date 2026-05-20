@@ -89,4 +89,40 @@ export class PrismaReportRepository implements IReportRepository {
       })),
     };
   }
+
+  async findStudentSubmissionSummaryByCourse(
+    courseId: string,
+    studentId: string,
+  ): Promise<{
+    total: number;
+    accepted: number;
+    avgScore: number | null;
+    avgExecutionTimeMs: number | null;
+  }> {
+    const where = {
+      studentId,
+      evaluationId: {
+        not: null,
+      },
+      evaluation: {
+        courseId,
+      },
+    };
+
+    const [total, accepted, agg] = await Promise.all([
+      this.prisma.submission.count({ where }),
+      this.prisma.submission.count({ where: { ...where, status: 'ACCEPTED' } }),
+      this.prisma.submission.aggregate({ where, _avg: { score: true, executionTimeMs: true } }),
+    ]);
+
+    const avgScore = agg._avg.score !== null && agg._avg.score !== undefined ? Number(agg._avg.score) : null;
+    const avgExecutionTimeMs = agg._avg.executionTimeMs !== null && agg._avg.executionTimeMs !== undefined ? Number(agg._avg.executionTimeMs) : null;
+
+    return {
+      total,
+      accepted,
+      avgScore,
+      avgExecutionTimeMs,
+    };
+  }
 }

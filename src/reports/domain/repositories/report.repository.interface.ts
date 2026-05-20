@@ -14,4 +14,13 @@ export interface IReportRepository {
     skip: number,
     take: number,
   ): Promise<{ data: StudentEvaluationScoreReadModel[]; total: number }>;
+  findStudentSubmissionSummaryByCourse(
+    courseId: string,
+    studentId: string,
+  ): Promise<{
+    total: number;
+    accepted: number;
+    avgScore: number | null;
+    avgExecutionTimeMs: number | null;
+  }>;
 }
