@@ -16,7 +16,7 @@ import { createBullRedisConnection } from './config/bull-redis.factory';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.dev', '.env'], }),
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       imports: [ConfigModule],
