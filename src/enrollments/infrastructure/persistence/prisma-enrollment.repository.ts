@@ -21,6 +21,56 @@ export class PrismaEnrollmentRepository implements IEnrollmentRepository {
     return EnrollmentMapper.toDomain(model);
   }
 
+  async bulkCreateForCourse(
+    courseId: string,
+    studentIds: string[],
+  ): Promise<{ created: number; alreadyEnrolled: number }> {
+    if (studentIds.length === 0) {
+      return { created: 0, alreadyEnrolled: 0 };
+    }
+
+    const alreadyEnrolled = await this.findEnrolledStudentIdsInCourse(
+      courseId,
+      studentIds,
+    );
+    const alreadySet = new Set(alreadyEnrolled);
+    const toCreate = studentIds.filter((id) => !alreadySet.has(id));
+
+    if (toCreate.length === 0) {
+      return { created: 0, alreadyEnrolled: alreadyEnrolled.length };
+    }
+
+    const result = await this.prisma.enrollment.createMany({
+      data: toCreate.map((studentId) => ({
+        courseId,
+        studentId,
+      })),
+      skipDuplicates: true,
+    });
+
+    return {
+      created: result.count,
+      alreadyEnrolled: alreadyEnrolled.length,
+    };
+  }
+
+  async findEnrolledStudentIdsInCourse(
+    courseId: string,
+    studentIds: string[],
+  ): Promise<string[]> {
+    if (studentIds.length === 0) return [];
+
+    const rows = await this.prisma.enrollment.findMany({
+      where: {
+        courseId,
+        studentId: { in: studentIds },
+      },
+      select: { studentId: true },
+    });
+
+    return rows.map((row) => row.studentId);
+  }
+
   async findByCompositeId(studentId: string, courseId: string): Promise<Enrollment | null> {
     const model = await this.prisma.enrollment.findUnique({
       where: {
@@ -86,6 +136,31 @@ export class PrismaEnrollmentRepository implements IEnrollmentRepository {
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.course.count({ where: { enrollments: { some: { studentId } } } }),
+    ]);
+
+    const data = models.map((c) => EnrollmentMapper.toCourseListItem(c));
+    return { data, total };
+  }
+
+  async findCoursesByStudentAndProfessor(
+    studentId: string,
+    professorId: string,
+    skip: number,
+    take: number,
+  ): Promise<{ data: CourseListItemReadModel[]; total: number }> {
+    const where = {
+      professorId,
+      enrollments: { some: { studentId } },
+    };
+
+    const [models, total] = await Promise.all([
+      this.prisma.course.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.course.count({ where }),
     ]);
 
     const data = models.map((c) => EnrollmentMapper.toCourseListItem(c));
