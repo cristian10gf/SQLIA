@@ -1,20 +1,40 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Logger } from '@nestjs/common';
+import { Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { AiService } from '../services/ai.service';
-import { ISqlJob } from '../../domain/dtos/sql-job.dto';
-import { EvaluateSqlUseCase } from '../../application/use-cases/evaluate-sql.use-case';
+import { SqlEvaluationService } from '../services/sql-evaluation.service';
+import { BullLoggingWorkerHost } from '../../../shared/infrastructure/queue/bull-worker-host.base';
+import {
+  bullWorkerLockDurationMs,
+  bullWorkerStalledIntervalMs,
+} from '../../../shared/infrastructure/queue/bull-worker-settings';
 
-@Processor('sql-evaluation')
-export class SqlWorker extends WorkerHost {
-  constructor(private readonly evaluateSqlUseCase: EvaluateSqlUseCase) {
+interface EvaluateSubmissionJob {
+  submissionId: string;
+}
+
+@Processor('sql-evaluation', {
+  stalledInterval: bullWorkerStalledIntervalMs({
+    envFallbackMs: '45000',
+    invalidFallbackMs: 45_000,
+  }),
+  maxStalledCount: 2,
+  lockDuration: bullWorkerLockDurationMs(
+    'SQL_EVALUATION_LOCK_MS',
+    120_000,
+    10_000,
+  ),
+})
+export class SqlWorker extends BullLoggingWorkerHost {
+  protected readonly workerLogger = new Logger(SqlWorker.name);
+  protected readonly queueDiagnosticTag = 'sql-evaluation';
+
+  constructor(private readonly evaluationService: SqlEvaluationService) {
     super();
   }
 
-  async process(job: Job<ISqlJob>): Promise<any> {
-    console.log(`Procesando entrega: ${job.data.submissionId}`);
-
-    const result = await this.evaluateSqlUseCase.execute(job.data);
-    console.log(result);
-    return result;
+  async process(job: Job<EvaluateSubmissionJob>): Promise<void> {
+    const { submissionId } = job.data;
+    this.workerLogger.log(`[${job.id}] evaluando submission ${submissionId}`);
+    await this.evaluationService.evaluateSubmission(submissionId);
   }
 }

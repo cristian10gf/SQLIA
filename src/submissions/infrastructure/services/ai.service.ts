@@ -46,16 +46,25 @@ export class AiService implements IAiProvider {
         timeout: 60000,
       });
 
-      if (response.data?.choices?.length > 0) {
-        return response.data.choices[0].message.content;
+      const data = response.data as {
+        choices?: { message?: { content?: string } }[];
+      };
+      const first = data.choices?.[0]?.message?.content;
+      if (typeof first === 'string' && first.length > 0) {
+        return first;
       }
 
       throw new Error('La API respondió sin contenido en "choices"');
-    } catch (error: any) {
-      const errorData = error.response?.data || error.message;
+    } catch (error: unknown) {
+      const errorData: unknown = axios.isAxiosError(error)
+        ? (error.response?.data ?? error.message)
+        : error instanceof Error
+          ? error.message
+          : String(error);
       this.logger.error('Error en AiService:', JSON.stringify(errorData));
 
-      throw new Error(`Fallo en el Asistente IA: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Fallo en el Asistente IA: ${message}`);
     }
   }
 }

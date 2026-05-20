@@ -1,13 +1,14 @@
 import { Injectable, Inject } from '@nestjs/common';
 import type { IAiProvider } from '../../domain/interfaces/ai-provider.interface';
-import { ISqlJob } from '../../domain/dtos/sql-job.dto';
 
+/** @deprecated El flujo real usa SqlEvaluationService + SqlWorker. Conservado para compatibilidad. */
 @Injectable()
 export class EvaluateSqlUseCase {
   constructor(
     @Inject('IAiProvider') private readonly aiProvider: IAiProvider,
   ) {}
-  async execute(data: ISqlJob) {
-    return await this.aiProvider.getOptimizationTips(data.query, data.schema);
+
+  execute(data: { submissionId: string }) {
+    return Promise.resolve({ submissionId: data.submissionId });
   }
 }
