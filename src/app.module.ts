@@ -12,6 +12,7 @@ import { EvaluationsModule } from './evaluations/evaluations.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { EvaluationChallengesModule } from './evaluation-challenges/evaluation-challenges.module';
 import { SubmissionsModule } from './submissions/submission.module';
+import { ReportsModule } from './reports/reports.module';
 import { createBullRedisConnection } from './config/bull-redis.factory';
 
 @Module({
@@ -33,6 +34,7 @@ import { createBullRedisConnection } from './config/bull-redis.factory';
     ChallengesModule,
     EvaluationChallengesModule,
     SubmissionsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
