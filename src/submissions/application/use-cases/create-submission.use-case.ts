@@ -12,7 +12,10 @@ import type { CreateSubmissionDto } from '../dtos/create-submission.dto';
 import { SUBMISSION_REPOSITORY } from '../../domain/repositories/submission.repository.interface';
 import type { ISubmissionRepository } from '../../domain/repositories/submission.repository.interface';
 import { SUBMISSION_ELIGIBILITY_QUERY } from '../../domain/interfaces/submission-eligibility.query.tokens';
-import type { ISubmissionEligibilityQuery } from '../../domain/interfaces/submission-eligibility.query.interface';
+import type {
+  EvaluationForSubmissionRow,
+  ISubmissionEligibilityQuery,
+} from '../../domain/interfaces/submission-eligibility.query.interface';
 import { SQL_EVALUATION_ENQUEUE_OPTS } from '../../../shared/infrastructure/queue/bull-job-options.presets';
 
 @Injectable()
@@ -36,14 +39,16 @@ export class CreateSubmissionUseCase {
       throw new BadRequestException('Reto no encontrado');
     }
 
-    const enrolled = await this.eligibility.isStudentEnrolledInCourse(
-      studentId,
-      challenge.courseId,
-    );
-    if (!enrolled) {
-      throw new ForbiddenException(
-        'Debés estar inscripto en el curso del reto',
+    if (challenge.visibility === 'PRIVATE') {
+      const enrolled = await this.eligibility.isStudentEnrolledInCourse(
+        studentId,
+        challenge.courseId,
       );
+      if (!enrolled) {
+        throw new ForbiddenException(
+          'Debés estar inscripto en el curso del reto',
+        );
+      }
     }
 
     if (challenge.status === 'ARCHIVED') {
@@ -51,16 +56,20 @@ export class CreateSubmissionUseCase {
     }
 
     if (dto.evaluationId) {
-      const ok = await this.eligibility.existsVisibleEvaluationForChallenge({
+      const evaluation = await this.eligibility.findEvaluationForSubmission({
         evaluationId: dto.evaluationId,
         challengeId: challenge.id,
         courseId: challenge.courseId,
       });
-      if (!ok) {
+      if (!evaluation) {
         throw new BadRequestException(
           'Evaluación inválida o no visible para este reto',
         );
       }
+      await this.assertEvaluationAcademicRules(
+        studentId,
+        evaluation,
+      );
     }
 
     const sandboxStatus = await this.eligibility.getChallengeSandboxStatus(
@@ -87,5 +96,49 @@ export class CreateSubmissionUseCase {
     );
 
     return { submissionId: submission.id, jobId: job.id };
+  }
+
+  private async assertEvaluationAcademicRules(
+    studentId: string,
+    evaluation: EvaluationForSubmissionRow,
+  ): Promise<void> {
+    const now = new Date();
+
+    if (now < evaluation.startDate) {
+      throw new ForbiddenException('La evaluación aún no ha comenzado');
+    }
+    if (now > evaluation.endDate) {
+      throw new ForbiddenException('La evaluación ya finalizó');
+    }
+
+    const attemptCount =
+      await this.eligibility.countStudentSubmissionsInEvaluation(
+        studentId,
+        evaluation.id,
+      );
+    if (attemptCount >= evaluation.maxAttempts) {
+      throw new ForbiddenException(
+        `Alcanzaste el máximo de ${evaluation.maxAttempts} intento(s) para esta evaluación`,
+      );
+    }
+
+    // durationMinutes: tiempo máximo de sesión por estudiante desde su primer
+    // envío en esta evaluación. Sin envíos previos, solo aplica la ventana
+    // global startDate–endDate (UTC).
+    const firstSubmissionAt =
+      await this.eligibility.findFirstSubmissionTimeInEvaluation(
+        studentId,
+        evaluation.id,
+      );
+    if (firstSubmissionAt) {
+      const sessionEndsAt = new Date(
+        firstSubmissionAt.getTime() + evaluation.durationMinutes * 60_000,
+      );
+      if (now > sessionEndsAt) {
+        throw new ForbiddenException(
+          `Se agotó el tiempo de la evaluación (${evaluation.durationMinutes} minutos desde tu primer envío)`,
+        );
+      }
+    }
   }
 }

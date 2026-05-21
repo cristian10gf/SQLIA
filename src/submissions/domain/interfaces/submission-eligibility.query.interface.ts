@@ -4,6 +4,15 @@ export type ChallengeForSubmissionRow = {
   id: string;
   courseId: string;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  visibility: 'PUBLIC' | 'PRIVATE';
+};
+
+export type EvaluationForSubmissionRow = {
+  id: string;
+  startDate: Date;
+  endDate: Date;
+  durationMinutes: number;
+  maxAttempts: number;
 };
 
 export interface ISubmissionEligibilityQuery {
@@ -14,11 +23,19 @@ export interface ISubmissionEligibilityQuery {
     studentId: string,
     courseId: string,
   ): Promise<boolean>;
-  existsVisibleEvaluationForChallenge(params: {
+  findEvaluationForSubmission(params: {
     evaluationId: string;
     challengeId: string;
     courseId: string;
-  }): Promise<boolean>;
+  }): Promise<EvaluationForSubmissionRow | null>;
+  countStudentSubmissionsInEvaluation(
+    studentId: string,
+    evaluationId: string,
+  ): Promise<number>;
+  findFirstSubmissionTimeInEvaluation(
+    studentId: string,
+    evaluationId: string,
+  ): Promise<Date | null>;
   getChallengeSandboxStatus(
     challengeId: string,
   ): Promise<ChallengeSandboxStatusValue | null>;

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type {
   ChallengeForSubmissionRow,
+  EvaluationForSubmissionRow,
   ISubmissionEligibilityQuery,
 } from '../../domain/interfaces/submission-eligibility.query.interface';
 import type { ChallengeSandboxStatusValue } from '../../../challenges/domain/repositories/challenge-sandbox.repository.interface';
@@ -16,7 +17,7 @@ export class PrismaSubmissionEligibilityQuery implements ISubmissionEligibilityQ
   ): Promise<ChallengeForSubmissionRow | null> {
     const row = await this.prisma.challenge.findFirst({
       where: { id: challengeId, status: ChallengeStatus.PUBLISHED },
-      select: { id: true, courseId: true, status: true },
+      select: { id: true, courseId: true, status: true, visibility: true },
     });
     if (!row) {
       return null;
@@ -25,6 +26,7 @@ export class PrismaSubmissionEligibilityQuery implements ISubmissionEligibilityQ
       id: row.id,
       courseId: row.courseId,
       status: row.status,
+      visibility: row.visibility,
     };
   }
 
@@ -39,11 +41,11 @@ export class PrismaSubmissionEligibilityQuery implements ISubmissionEligibilityQ
     return row !== null;
   }
 
-  async existsVisibleEvaluationForChallenge(params: {
+  async findEvaluationForSubmission(params: {
     evaluationId: string;
     challengeId: string;
     courseId: string;
-  }): Promise<boolean> {
+  }): Promise<EvaluationForSubmissionRow | null> {
     const row = await this.prisma.evaluation.findFirst({
       where: {
         id: params.evaluationId,
@@ -51,9 +53,45 @@ export class PrismaSubmissionEligibilityQuery implements ISubmissionEligibilityQ
         isVisible: true,
         challenges: { some: { challengeId: params.challengeId } },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        startDate: true,
+        endDate: true,
+        durationMinutes: true,
+        maxAttempts: true,
+      },
     });
-    return row !== null;
+    if (!row) {
+      return null;
+    }
+    return {
+      id: row.id,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      durationMinutes: row.durationMinutes,
+      maxAttempts: row.maxAttempts,
+    };
+  }
+
+  async countStudentSubmissionsInEvaluation(
+    studentId: string,
+    evaluationId: string,
+  ): Promise<number> {
+    return this.prisma.submission.count({
+      where: { studentId, evaluationId },
+    });
+  }
+
+  async findFirstSubmissionTimeInEvaluation(
+    studentId: string,
+    evaluationId: string,
+  ): Promise<Date | null> {
+    const row = await this.prisma.submission.findFirst({
+      where: { studentId, evaluationId },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    });
+    return row?.createdAt ?? null;
   }
 
   async getChallengeSandboxStatus(
