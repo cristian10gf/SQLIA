@@ -143,31 +143,9 @@ function isChallengeAvailableForStudent(
 
   return isEvaluationOpen && challenge.visibility === 'PUBLIC';
 }
+
 export default function EvaluationsAndChallengesPage() {
   const { courseId } = useParams<{ courseId: string }>();
-
-   const [showAiSuggestionBox, setShowAiSuggestionBox] = useState(false);
-   const [aiSuggestionFeedback, setAiSuggestionFeedback] = useState('');
-
-   const toggleAiSuggestionBox = () => {
-    setShowAiSuggestionBox((currentValue) => !currentValue);
-    setAiSuggestionFeedback('');
-  };
-
-  const [aiSuggestionPrompt, setAiSuggestionPrompt] = useState('');
-
-  const handleSendAiSuggestionPrompt = () => {
-    const prompt = aiSuggestionPrompt.trim();
-
-    if (!prompt) {
-      setAiSuggestionFeedback('Escribe el prompt que quieres enviar a la IA.');
-      return;
-    }
-
-    setAiSuggestionFeedback(
-      'Prompt listo para enviar a la IA. Cuando conectemos el endpoint, aquí se mostrará la sugerencia generada.',
-    );
-  };
 
   const [session] = useState(() => ({
     token: authStorage.getToken(),
@@ -183,6 +161,7 @@ export default function EvaluationsAndChallengesPage() {
   const [role] = useState<UserRole>(sessionUser.role);
 
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+
   const loadData = async () => {
     if (!courseId || !token || !role) return;
 
@@ -209,6 +188,7 @@ export default function EvaluationsAndChallengesPage() {
                     ev.id.toString(),
                     token,
                   );
+
             return { ...ev, challenges: challengesRes.data || [] };
           } catch {
             return { ...ev, challenges: [] };
@@ -237,9 +217,8 @@ export default function EvaluationsAndChallengesPage() {
   const [evaluationErrors, setEvaluationErrors] =
     useState<EvaluationFormErrors>({});
 
-  const [challengeErrors, setChallengeErrors] = useState<ChallengeFormErrors>(
-    {},
-  );
+  const [challengeErrors, setChallengeErrors] =
+    useState<ChallengeFormErrors>({});
 
   const [studentSolutions, setStudentSolutions] = useState<
     Record<number, string>
@@ -266,6 +245,13 @@ export default function EvaluationsAndChallengesPage() {
     useState<StudentEvaluationFilter>('AVAILABLE');
 
   const [actionMessage, setActionMessage] = useState('');
+  const [showAiSuggestionBox, setShowAiSuggestionBox] = useState(false);
+  const [aiSuggestionPrompt, setAiSuggestionPrompt] = useState('');
+  const [aiSuggestionFeedback, setAiSuggestionFeedback] = useState('');
+
+  const [editingChallengeId, setEditingChallengeId] = useState<number | null>(
+    null,
+  );
 
   const isAdmin = role === 'ADMIN';
   const isProfessor = role === 'PROFESSOR';
@@ -311,12 +297,9 @@ export default function EvaluationsAndChallengesPage() {
   }, [evaluations, isStudent, studentFilter]);
 
   const filteredEvaluations = useMemo(() => {
-    // 1. Si es profesor, no filtramos nada
     if (role === 'PROFESSOR') return evaluations;
 
-    // 2. Si es estudiante, aplicamos lógica según el selector
     return evaluations.filter((ev) => {
-      // Si el filtro es ALL, confiamos en lo que mandó la API y mostramos todo
       if (studentFilter === 'ALL') return true;
 
       const now = new Date();
@@ -339,7 +322,7 @@ export default function EvaluationsAndChallengesPage() {
         (evaluation) => evaluation.id === selectedEvaluationId,
       ) || null
     );
-  }, [selectedEvaluationId, visibleEvaluations]);
+  }, [selectedEvaluationId, visibleEvaluations, evaluations]);
 
   const publishedChallenges = useMemo(() => {
     return evaluations.reduce((accumulator, evaluation) => {
@@ -471,11 +454,12 @@ export default function EvaluationsAndChallengesPage() {
     } else if (typeof result === 'string') {
       try {
         JSON.parse(result);
-      } catch (e) {
+      } catch {
         errors.expectedResult =
           'El formato JSON es inválido. Revisa las comas y comillas.';
       }
     }
+
     return errors;
   };
 
@@ -521,6 +505,24 @@ export default function EvaluationsAndChallengesPage() {
     setActionMessage('');
   };
 
+  const toggleAiSuggestionBox = () => {
+    setShowAiSuggestionBox((currentValue) => !currentValue);
+    setAiSuggestionFeedback('');
+  };
+
+  const handleSendAiSuggestionPrompt = () => {
+    const prompt = aiSuggestionPrompt.trim();
+
+    if (!prompt) {
+      setAiSuggestionFeedback('Escribe el prompt que quieres enviar a la IA.');
+      return;
+    }
+
+    setAiSuggestionFeedback(
+      'Prompt listo para enviar a la IA. Cuando conectemos el endpoint, aquí se mostrará la sugerencia generada.',
+    );
+  };
+
   const addChallenge = async () => {
     const errors = validateChallenge(challengeForm);
     setChallengeErrors(errors);
@@ -529,9 +531,7 @@ export default function EvaluationsAndChallengesPage() {
     if (Object.keys(errors).length > 0) return;
 
     if (!editingEvaluationId) {
-      setActionMessage(
-        'Error: No hay una evaluación seleccionada para editar.',
-      );
+      setActionMessage('Error: No hay una evaluación seleccionada para editar.');
       return;
     }
 
@@ -557,7 +557,7 @@ export default function EvaluationsAndChallengesPage() {
           } else {
             finalExpectedResult = parsed;
           }
-        } catch (e) {
+        } catch {
           setChallengeErrors({ ...errors, expectedResult: 'JSON inválido' });
           return;
         }
@@ -594,10 +594,9 @@ export default function EvaluationsAndChallengesPage() {
               : ch,
           ),
         }));
+
         setActionMessage('Reto actualizado correctamente');
       } else {
-        console.log('TIPO DE DATO:', typeof challengePayload.expectedResult);
-        console.log('CONTENIDO:', challengePayload.expectedResult);
         const challengeRes: any = await challengeApi.create(
           challengePayload,
           token!,
@@ -682,6 +681,10 @@ export default function EvaluationsAndChallengesPage() {
     setEvaluationErrors({});
     setChallengeErrors({});
     setEditingEvaluationId(null);
+    setEditingChallengeId(null);
+    setShowAiSuggestionBox(false);
+    setAiSuggestionPrompt('');
+    setAiSuggestionFeedback('');
     setActionMessage('');
   };
 
@@ -746,7 +749,6 @@ export default function EvaluationsAndChallengesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    // 1. Confirmación del usuario
     const confirmDelete = window.confirm(
       '¿Seguro que deseas eliminar esta evaluación? Esta acción no se puede deshacer.',
     );
@@ -754,11 +756,8 @@ export default function EvaluationsAndChallengesPage() {
     if (!confirmDelete) return;
 
     try {
-      // 2. Llamada a la API
-      // Asegúrate de pasar el token que ya tienes disponible en el componente
       await evaluationApi.remove(id, token!);
 
-      // 3. Actualización del estado local (Optimistic UI o Sync)
       setEvaluations((previous) =>
         previous.filter((evaluation) => evaluation.id.toString() !== id),
       );
@@ -777,15 +776,14 @@ export default function EvaluationsAndChallengesPage() {
     } catch (error: any) {
       console.error('Error al eliminar la evaluación:', error);
 
-      // Feedback de error
       const errorMsg =
         error.response?.data?.message || 'No se pudo eliminar la evaluación.';
       setActionMessage(`Error: ${errorMsg}`);
 
-      // Si la API falló, podrías recargar los datos para restaurar la lista
       await loadData();
     }
   };
+
   const handleOpenDetail = (evaluationId: number) => {
     setEditingChallengeId(null);
     setSelectedEvaluationId(evaluationId);
@@ -797,10 +795,6 @@ export default function EvaluationsAndChallengesPage() {
       });
     }, 50);
   };
-
-  const [editingChallengeId, setEditingChallengeId] = useState<number | null>(
-    null,
-  );
 
   const handleEditChallenge = (
     evaluation: Evaluation,
@@ -820,6 +814,7 @@ export default function EvaluationsAndChallengesPage() {
       courseName: evaluation.courseName || '',
       challenges: evaluation.challenges || [],
     });
+
     setChallengeForm({
       title: challenge.title,
       description: challenge.description,
@@ -832,6 +827,10 @@ export default function EvaluationsAndChallengesPage() {
       timeLimitMs: challenge.timeLimitMs,
       points: (challenge as any).points || 0,
     });
+
+    setShowAiSuggestionBox(false);
+    setAiSuggestionPrompt('');
+    setAiSuggestionFeedback('');
 
     setTimeout(() => {
       const formElement = document.querySelector('.eval-challenge-form-card');
@@ -940,6 +939,14 @@ export default function EvaluationsAndChallengesPage() {
             <p>Retos SQL disponibles para estudiantes.</p>
           </article>
 
+          {!isStudent && (
+            <article className="eval-metric-card">
+              <h3>Evaluaciones activas</h3>
+              <strong>{activeEvaluations}</strong>
+              <p>Evaluaciones abiertas o disponibles en el curso.</p>
+            </article>
+          )}
+
           {isStudent && (
             <article className="eval-metric-card eval-date-card">
               <h3>Próximo cierre</h3>
@@ -948,6 +955,10 @@ export default function EvaluationsAndChallengesPage() {
             </article>
           )}
         </section>
+
+        {actionMessage && (
+          <div className="eval-success-banner">{actionMessage}</div>
+        )}
 
         {selectedEvaluation && (
           <section id="eval-detail-panel" className="eval-detail-panel">
@@ -1029,6 +1040,7 @@ export default function EvaluationsAndChallengesPage() {
                           >
                             Editar
                           </button>
+
                           <button
                             type="button"
                             className="eval-danger-btn"
@@ -1065,6 +1077,7 @@ export default function EvaluationsAndChallengesPage() {
                     {isStudent && canSubmit && (
                       <div className="eval-solution-box">
                         <label>Tu solución SQL</label>
+
                         <textarea
                           value={studentSolutions[challenge.id] || ''}
                           onChange={(event) =>
@@ -1242,6 +1255,7 @@ export default function EvaluationsAndChallengesPage() {
                 </div>
 
                 <div className="eval-form-group"></div>
+
                 <div className="eval-form-actions">
                   <button
                     type="button"
@@ -1254,6 +1268,7 @@ export default function EvaluationsAndChallengesPage() {
                   </button>
                 </div>
               </div>
+
               {editingEvaluationId && (
                 <>
                   <div className="eval-subsection">
@@ -1386,20 +1401,18 @@ export default function EvaluationsAndChallengesPage() {
                           }
                           rows={5}
                           value={
-                            // Si es string, lo usamos tal cual
                             typeof challengeForm.expectedResult === 'string'
                               ? challengeForm.expectedResult
-                              : // Si no es string pero tiene contenido (no es null/undefined), lo serializamos
-                                challengeForm.expectedResult
+                              : challengeForm.expectedResult
                                 ? JSON.stringify(
                                     challengeForm.expectedResult,
                                     null,
                                     2,
                                   )
-                                : '' // En cualquier otro caso (inicial), string vacío para que no salga nada
+                                : ''
                           }
-                          onChange={(e) => {
-                            const newValue = e.target.value;
+                          onChange={(event) => {
+                            const newValue = event.target.value;
                             setChallengeForm({
                               ...challengeForm,
                               expectedResult: newValue,
@@ -1616,16 +1629,6 @@ export default function EvaluationsAndChallengesPage() {
                       <h3>{evaluation.title}</h3>
                       <p>{evaluation.description}</p>
                     </div>
-
-                    {/*
-                      <span
-                        className={`eval-status-badge ${
-                          evaluation.status === 'ACTIVE' ? 'active' : 'inactive'
-                        }`}
-                      >
-                        {getStatusLabel(evaluation.status)}
-                      </span>
-                    */}
                   </div>
 
                   <div className="eval-card-dates">

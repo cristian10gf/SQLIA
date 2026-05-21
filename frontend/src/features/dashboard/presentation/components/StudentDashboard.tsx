@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom';
-
 type StudentDashboardProps = {
   courseCount: number;
   isLoading: boolean;
@@ -23,13 +21,6 @@ export function StudentDashboard({
           <strong>{isLoading ? '...' : courseCount}</strong>
           <p>Dato cargado desde el backend.</p>
         </article>
-      </div>
-
-      <div className="dashboard-panel">
-        <div className="panel-header">
-          <h2>Actividad académica</h2>
-          <Link to="/courses">Ver mis cursos</Link>
-        </div>
       </div>
     </section>
   );

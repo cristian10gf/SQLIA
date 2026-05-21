@@ -1,0 +1,504 @@
+.results-page {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.results-heading {
+  max-width: 920px;
+}
+
+.results-heading span,
+.results-course-eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.results-heading h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 38px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: -0.9px;
+}
+
+.results-heading p {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.results-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 18px;
+}
+
+.student-metrics-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.results-metric-card,
+.results-list-panel,
+.results-detail-panel,
+.results-section-card,
+.results-score-card {
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+}
+
+.results-metric-card {
+  padding: 22px;
+}
+
+.results-metric-card span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.results-metric-card strong {
+  display: block;
+  margin-top: 10px;
+  color: #0f172a;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.results-metric-card p {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.results-workspace {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.results-list-panel,
+.results-detail-panel {
+  padding: 24px;
+}
+
+.results-list-panel {
+  position: sticky;
+  top: 24px;
+}
+
+.results-panel-header {
+  margin-bottom: 18px;
+}
+
+.results-panel-header.compact {
+  margin-bottom: 14px;
+}
+
+.results-panel-header h2,
+.results-detail-header h2,
+.results-section-card h3 {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.results-panel-header h2 {
+  font-size: 24px;
+}
+
+.results-detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.results-detail-header h2 {
+  font-size: 30px;
+  line-height: 1.12;
+}
+
+.results-panel-header p,
+.results-detail-header p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.course-selector-list,
+.evaluation-selector-list,
+.course-submissions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.course-selector-card,
+.evaluation-selector-card,
+.course-submission-card {
+  width: 100%;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.course-selector-card:hover,
+.course-selector-card.active,
+.evaluation-selector-card:hover,
+.evaluation-selector-card.active,
+.course-submission-card:hover,
+.course-submission-card.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.course-selector-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.course-selector-top strong {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.course-selector-meta,
+.evaluation-selector-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.course-selector-meta span,
+.evaluation-selector-meta span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.evaluations-section,
+.submissions-section {
+  margin-top: 24px;
+}
+
+.evaluation-selector-card strong {
+  display: block;
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.evaluation-selector-card p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.results-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.results-filters.horizontal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 12px;
+}
+
+.results-filters input,
+.results-filters select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 15px;
+  border: 1px solid #dbe3ef;
+  border-radius: 15px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  outline: none;
+}
+
+.results-filters input:focus,
+.results-filters select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.course-submission-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.course-submission-main strong {
+  display: block;
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.course-submission-main p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.result-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.result-item-meta span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.result-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.result-status.accepted {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.result-status.wrong {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.result-status.error {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.submission-detail-section {
+  margin-top: 24px;
+}
+
+.results-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.results-detail-grid div {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.results-detail-grid span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.results-detail-grid strong {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.results-score-card {
+  padding: 18px;
+  margin-bottom: 18px;
+  border: 1px solid #e2e8f0;
+}
+
+.results-score-card > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.results-score-card span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.results-score-card strong {
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.results-score-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.results-score-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb 0%, #22c55e 100%);
+}
+
+.results-section-card {
+  padding: 20px;
+  margin-top: 18px;
+  border: 1px solid #e2e8f0;
+}
+
+.results-section-card h3 {
+  margin-bottom: 14px;
+  font-size: 21px;
+}
+
+.results-code-block,
+.results-json-block {
+  margin: 0;
+  padding: 16px;
+  overflow-x: auto;
+  border-radius: 16px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.results-code-block {
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+}
+
+.results-json-block {
+  background: #07152f;
+  color: #dbeafe;
+}
+
+.assistant-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.assistant-single-text {
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.results-empty-state {
+  padding: 24px;
+  border-radius: 18px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (max-width: 1300px) {
+  .results-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .results-list-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .student-metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .results-filters.horizontal {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .results-heading h1 {
+    font-size: 30px;
+  }
+
+  .results-metrics-grid,
+  .student-metrics-grid,
+  .results-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .course-selector-top,
+  .course-submission-main,
+  .results-score-card > div:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
