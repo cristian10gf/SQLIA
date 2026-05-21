@@ -115,6 +115,7 @@ model Challenge {
   seedScript       String?             @map("seed_script")
   expectedResult   Json                @map("expected_result")
   timeLimitMs      Int                 @default(2000) @map("time_limit_ms")
+  tags             String[]            @default([])
   status           ChallengeStatus     @default(DRAFT)
   createdAt        DateTime            @default(now()) @map("created_at")
 
