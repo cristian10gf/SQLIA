@@ -14,7 +14,7 @@ const bullRedisDefaults: Partial<RedisOptions> = {
 export function createBullRedisConnection(config: ConfigService): RedisOptions {
   const url = config.get<string>('REDIS_URL')?.trim();
   if (url) {
-    return { ...bullRedisDefaults };
+    return { ...bullRedisDefaults, url } as RedisOptions;
   }
 
   const portRaw = config.get<string>('REDIS_PORT', '6379');
