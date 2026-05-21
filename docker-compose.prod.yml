@@ -2,6 +2,10 @@
 # Postgres y Redis no exponen puertos al host.
 #
 #   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+#
+# Sandbox Docker: la API monta el socket del host para aprovisionar contenedores postgres:16
+# por reto (igual que docker-compose.dev.yml perfil full-docker).
+# Linux: socket Unix por defecto. DOCKER_HOST solo si el daemon no está en /var/run/docker.sock.
 
 services:
   postgres:
@@ -61,8 +65,16 @@ services:
       PORT: ${PORT:-3000}
       AI_URL: ${AI_URL:-}
       AI_API_KEY: ${AI_API_KEY:-}
+      DOCKER_HOST: ${DOCKER_HOST:-}
+      SANDBOX_POSTGRES_IMAGE: ${SANDBOX_POSTGRES_IMAGE:-postgres:16}
+      SQL_SANDBOX_DB_HOST: ${SQL_SANDBOX_DB_HOST:-host.docker.internal}
+      SANDBOX_DEFAULT_TTL_DAYS: ${SANDBOX_DEFAULT_TTL_DAYS:-30}
+      SANDBOX_TTL_DAYS: ${SANDBOX_TTL_DAYS:-}
+      BULLMQ_STALLED_INTERVAL_MS: ${BULLMQ_STALLED_INTERVAL_MS:-45000}
     ports:
       - '${API_PORT:-3000}:3000'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
         condition: service_healthy
