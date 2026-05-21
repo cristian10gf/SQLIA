@@ -7,12 +7,16 @@ import { SubmissionsController } from './infrastructure/controllers/submissions.
 import { SqlWorker } from './infrastructure/queue/sql.worker';
 import { PrismaSubmissionRepository } from './infrastructure/persistence/prisma-submission.repository';
 import { PrismaSubmissionEligibilityQuery } from './infrastructure/persistence/prisma-submission-eligibility.query';
-import { SqlEvaluationService } from './infrastructure/services/sql-evaluation.service';
+import { PrismaSubmissionEvaluationContextQuery } from './infrastructure/persistence/prisma-submission-evaluation.query';
+import { SqlSandboxRunnerService } from './infrastructure/services/sql-sandbox-runner.service';
 import { SubmissionStalledRecoveryService } from './infrastructure/services/submission-stalled-recovery.service';
 import { CreateSubmissionUseCase } from './application/use-cases/create-submission.use-case';
+import { EvaluateSubmissionUseCase } from './application/use-cases/evaluate-submission.use-case';
 import { GetSubmissionByIdUseCase } from './application/use-cases/get-submission-by-id.use-case';
 import { SUBMISSION_REPOSITORY } from './domain/repositories/submission.repository.interface';
 import { SUBMISSION_ELIGIBILITY_QUERY } from './domain/interfaces/submission-eligibility.query.tokens';
+import { SUBMISSION_EVALUATION_CONTEXT_QUERY } from './domain/interfaces/submission-evaluation-context.query.tokens';
+import { SQL_SANDBOX_RUNNER } from './domain/interfaces/sql-sandbox-runner.interface';
 
 @Module({
   imports: [
@@ -30,9 +34,10 @@ import { SUBMISSION_ELIGIBILITY_QUERY } from './domain/interfaces/submission-eli
   controllers: [SubmissionsController],
   providers: [
     SqlWorker,
-    SqlEvaluationService,
+    SqlSandboxRunnerService,
     SubmissionStalledRecoveryService,
     CreateSubmissionUseCase,
+    EvaluateSubmissionUseCase,
     GetSubmissionByIdUseCase,
     {
       provide: SUBMISSION_REPOSITORY,
@@ -41,6 +46,14 @@ import { SUBMISSION_ELIGIBILITY_QUERY } from './domain/interfaces/submission-eli
     {
       provide: SUBMISSION_ELIGIBILITY_QUERY,
       useClass: PrismaSubmissionEligibilityQuery,
+    },
+    {
+      provide: SUBMISSION_EVALUATION_CONTEXT_QUERY,
+      useClass: PrismaSubmissionEvaluationContextQuery,
+    },
+    {
+      provide: SQL_SANDBOX_RUNNER,
+      useExisting: SqlSandboxRunnerService,
     },
   ],
 })

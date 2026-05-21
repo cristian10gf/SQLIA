@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { SqlEvaluationService } from '../services/sql-evaluation.service';
+import { EvaluateSubmissionUseCase } from '../../application/use-cases/evaluate-submission.use-case';
 import { BullLoggingWorkerHost } from '../../../shared/infrastructure/queue/bull-worker-host.base';
 import {
   bullWorkerLockDurationMs,
@@ -28,13 +28,15 @@ export class SqlWorker extends BullLoggingWorkerHost {
   protected readonly workerLogger = new Logger(SqlWorker.name);
   protected readonly queueDiagnosticTag = 'sql-evaluation';
 
-  constructor(private readonly evaluationService: SqlEvaluationService) {
+  constructor(
+    private readonly evaluateSubmission: EvaluateSubmissionUseCase,
+  ) {
     super();
   }
 
   async process(job: Job<EvaluateSubmissionJob>): Promise<void> {
     const { submissionId } = job.data;
     this.workerLogger.log(`[${job.id}] evaluando submission ${submissionId}`);
-    await this.evaluationService.evaluateSubmission(submissionId);
+    await this.evaluateSubmission.execute(submissionId);
   }
 }
