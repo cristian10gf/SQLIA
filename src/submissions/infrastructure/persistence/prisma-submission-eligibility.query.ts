@@ -4,6 +4,7 @@ import type {
   ISubmissionEligibilityQuery,
 } from '../../domain/interfaces/submission-eligibility.query.interface';
 import type { ChallengeSandboxStatusValue } from '../../../challenges/domain/repositories/challenge-sandbox.repository.interface';
+import { ChallengeStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
@@ -13,8 +14,8 @@ export class PrismaSubmissionEligibilityQuery implements ISubmissionEligibilityQ
   async findChallengeForSubmission(
     challengeId: string,
   ): Promise<ChallengeForSubmissionRow | null> {
-    const row = await this.prisma.challenge.findUnique({
-      where: { id: challengeId },
+    const row = await this.prisma.challenge.findFirst({
+      where: { id: challengeId, status: ChallengeStatus.PUBLISHED },
       select: { id: true, courseId: true, status: true },
     });
     if (!row) {
