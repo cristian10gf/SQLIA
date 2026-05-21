@@ -16,6 +16,7 @@ export class Challenge {
     public readonly seedScript: string | null,
     public readonly expectedResult: Record<string, any>,
     public readonly timeLimitMs: number,
+    public readonly tags: string[],
     public readonly status: ChallengeStatus,
     public readonly createdAt?: Date,
   ) {}

@@ -17,6 +17,7 @@ export type ChallengePersistenceRow = Pick<
   | 'schemaDefinition'
   | 'seedScript'
   | 'timeLimitMs'
+  | 'tags'
   | 'status'
   | 'createdAt'
 > & { expectedResult?: Prisma.JsonValue | null };
@@ -36,6 +37,7 @@ export class ChallengeMapper {
       model.seedScript,
       (model.expectedResult ?? {}) as Record<string, any>,
       model.timeLimitMs,
+      model.tags,
       model.status as ChallengeStatus,
       model.createdAt,
     );

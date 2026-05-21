@@ -38,6 +38,7 @@ export class UpdateChallengeUseCase {
       seedScript: dto.seedScript,
       expectedResult: dto.expectedResult,
       timeLimitMs: dto.timeLimitMs,
+      tags: dto.tags,
     };
 
     return await this.challengeRepository.update(id, data);

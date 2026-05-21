@@ -35,6 +35,7 @@ export class CreateChallengeUseCase {
       dto.seedScript ?? null,
       dto.expectedResult,
       dto.timeLimitMs ?? 2000,
+      dto.tags ?? [],
       ChallengeStatus.DRAFT,
     );
 

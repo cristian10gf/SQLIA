@@ -9,7 +9,11 @@ import { CHALLENGE_SANDBOX_REPOSITORY } from '../../domain/repositories/challeng
 import type { IChallengeSandboxRepository } from '../../domain/repositories/challenge-sandbox.repository.interface';
 import { SQL_EXECUTION_PORT } from '../../../shared/domain/interfaces/sql-execution.tokens';
 import type { ISqlExecutionPort } from '../../../shared/domain/interfaces/sql-execution.interface';
-import { CHALLENGE_SANDBOX_EXPIRES_AT_QUERY } from '../../domain/interfaces/challenge-provisioning.tokens';
+import {
+  CHALLENGE_ARCHIVE_ON_SANDBOX_TEARDOWN_COMMAND,
+  CHALLENGE_SANDBOX_EXPIRES_AT_QUERY,
+} from '../../domain/interfaces/challenge-provisioning.tokens';
+import type { IChallengeArchiveOnSandboxTeardownCommand } from '../../domain/interfaces/challenge-archive-on-sandbox-teardown.command.interface';
 import type { IChallengeSandboxExpiresAtQuery } from '../../domain/interfaces/challenge-sandbox-expires-at.query.interface';
 import { challengeSandboxDeferredTeardownOpts } from '../../../shared/infrastructure/queue/bull-job-options.presets';
 
@@ -30,6 +34,8 @@ export class ChallengeSandboxProvisioner {
     @Inject(SQL_EXECUTION_PORT) private readonly sqlRunner: ISqlExecutionPort,
     @Inject(CHALLENGE_SANDBOX_EXPIRES_AT_QUERY)
     private readonly expiresAtQuery: IChallengeSandboxExpiresAtQuery,
+    @Inject(CHALLENGE_ARCHIVE_ON_SANDBOX_TEARDOWN_COMMAND)
+    private readonly archiveOnTeardown: IChallengeArchiveOnSandboxTeardownCommand,
     @InjectQueue('challenge-sandbox') private readonly sandboxQueue: Queue,
   ) {}
 
@@ -163,26 +169,31 @@ export class ChallengeSandboxProvisioner {
     });
   }
 
+  /**
+   * Cierra el contenedor sandbox y marca el sandbox EXPIRED.
+   * El reto pasa a ARCHIVED solo al finalizar este flujo (no al vencer `expiresAt`).
+   * Si Docker falla al detener/eliminar, el sandbox queda EXPIRED igualmente; el reto
+   * se archiva porque el teardown ya se ejecutó (posible contenedor huérfano → mantenimiento).
+   */
   async teardown(challengeId: string): Promise<void> {
     const row = await this.sandboxes.findByChallengeId(challengeId);
     if (!row) {
       return;
     }
-    if (!row.dockerContainerName) {
-      await this.sandboxes.updateByChallengeId(challengeId, {
-        status: 'EXPIRED',
-      });
-      return;
-    }
     if (row.status === 'EXPIRED') {
+      await this.archiveOnTeardown.archiveChallengeOnSandboxTeardown(
+        challengeId,
+      );
       return;
     }
-    try {
-      const c = this.docker.getContainer(row.dockerContainerName);
-      await c.stop({ t: 2 }).catch(() => {});
-      await c.remove({ force: true }).catch(() => {});
-    } catch (e) {
-      this.logger.warn(`teardown docker ${challengeId}: ${e}`);
+    if (row.dockerContainerName) {
+      try {
+        const c = this.docker.getContainer(row.dockerContainerName);
+        await c.stop({ t: 2 }).catch(() => {});
+        await c.remove({ force: true }).catch(() => {});
+      } catch (e) {
+        this.logger.warn(`teardown docker ${challengeId}: ${e}`);
+      }
     }
     await this.sandboxes.updateByChallengeId(challengeId, {
       status: 'EXPIRED',
@@ -191,5 +202,6 @@ export class ChallengeSandboxProvisioner {
       dbPassword: null,
       lastError: null,
     });
+    await this.archiveOnTeardown.archiveChallengeOnSandboxTeardown(challengeId);
   }
 }

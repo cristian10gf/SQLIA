@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { ChallengeVisibility } from '@prisma/client';
+import { ChallengeStatus, ChallengeVisibility } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { Challenge } from '../../domain/entities/challenge.entity';
 import { IChallengeRepository } from '../../domain/repositories/challenge.repository.interface';
@@ -28,6 +28,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
         seedScript: challenge.seedScript,
         expectedResult: challenge.expectedResult,
         timeLimitMs: challenge.timeLimitMs,
+        tags: challenge.tags,
         status: challenge.status,
       },
     });
@@ -69,6 +70,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
     const where = {
       courseId,
       ...(visibility === undefined ? {} : { visibility: visibility ? ChallengeVisibility.PUBLIC : ChallengeVisibility.PRIVATE }),
+      ...(maskExpectedResult ? { status: ChallengeStatus.PUBLISHED } : {}),
     };
 
     const select: Prisma.ChallengeSelect = {
@@ -83,6 +85,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
       schemaDefinition: true,
       seedScript: true,
       timeLimitMs: true,
+      tags: true,
       status: true,
       createdAt: true,
     };
@@ -116,6 +119,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
     const where = {
       createdBy: professorId,
       ...(visibility === undefined ? {} : { visibility: visibility ? ChallengeVisibility.PUBLIC : ChallengeVisibility.PRIVATE }),
+      ...(maskExpectedResult ? { status: ChallengeStatus.PUBLISHED } : {}),
     };
 
     const select: Prisma.ChallengeSelect = {
@@ -130,6 +134,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
       schemaDefinition: true,
       seedScript: true,
       timeLimitMs: true,
+      tags: true,
       status: true,
       createdAt: true,
     };
@@ -169,6 +174,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
         seedScript: challenge.seedScript,
         expectedResult: challenge.expectedResult,
         timeLimitMs: challenge.timeLimitMs,
+        ...(challenge.tags !== undefined ? { tags: challenge.tags } : {}),
       },
     });
 

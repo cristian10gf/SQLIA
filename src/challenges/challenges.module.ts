@@ -21,7 +21,9 @@ import { PrismaChallengeSandboxRepository } from './infrastructure/persistence/p
 import { PrismaChallengeCourseOwnershipQuery } from './infrastructure/persistence/prisma-challenge-course-ownership.query';
 import { PrismaChallengeSandboxExpiresAtQuery } from './infrastructure/persistence/prisma-challenge-sandbox-expires-at.query';
 import { PrismaChallengePublishForSandboxCommand } from './infrastructure/persistence/prisma-challenge-publish-for-sandbox.command';
+import { PrismaChallengeArchiveOnSandboxTeardownCommand } from './infrastructure/persistence/prisma-challenge-archive-on-sandbox-teardown.command';
 import {
+  CHALLENGE_ARCHIVE_ON_SANDBOX_TEARDOWN_COMMAND,
   CHALLENGE_COURSE_OWNERSHIP_QUERY,
   CHALLENGE_PUBLISH_FOR_SANDBOX_COMMAND,
   CHALLENGE_SANDBOX_EXPIRES_AT_QUERY,
@@ -77,6 +79,10 @@ import { ChallengeSandboxMaintenanceScheduler } from './infrastructure/schedule/
     {
       provide: CHALLENGE_PUBLISH_FOR_SANDBOX_COMMAND,
       useClass: PrismaChallengePublishForSandboxCommand,
+    },
+    {
+      provide: CHALLENGE_ARCHIVE_ON_SANDBOX_TEARDOWN_COMMAND,
+      useClass: PrismaChallengeArchiveOnSandboxTeardownCommand,
     },
   ],
   exports: [
