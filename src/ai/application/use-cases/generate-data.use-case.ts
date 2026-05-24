@@ -7,7 +7,7 @@ export class AnalyzeSqlUseCase {
     @Inject('IAiProvider') private readonly aiProvider: IAiProvider,
   ) {}
 
-  async execute(query: string, results: string): Promise<string> {
-    return await this.aiProvider.getOptimizationTips(query, results);
+  async execute(schema: string, prompt: string): Promise<string> {
+    return await this.aiProvider.generateRandomData(schema, prompt);
   }
 }

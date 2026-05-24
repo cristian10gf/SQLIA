@@ -7,8 +7,16 @@ export class AnalyzeSqlDto {
   query: string;
 
   @ApiProperty({
-    example: 'CREATE TABLE data (id SERIAL PRIMARY KEY, info VARCHAR(100))',
+    example: `{
+  "data": [
+    {
+      "id": 1,
+      "nombre": "Juan Perez"
+    }
+  ],
+  "rowCount": 1
+}`,
   })
-  @IsNotEmpty({ message: 'Es necesario el esquema.' })
-  schema: string;
+  @IsNotEmpty({ message: 'Se necesitan los resultados.' })
+  results: string;
 }
