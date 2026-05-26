@@ -1,13 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { IAiProvider } from '../../domain/repositories/ai-provider.repository';
+import { GenerateChallengeDto } from '../dtos/generate-challenge.dto';
 
 @Injectable()
-export class AnalyzeSqlUseCase {
+export class GenerateChallengeUseCase {
   constructor(
     @Inject('IAiProvider') private readonly aiProvider: IAiProvider,
   ) {}
 
-  async execute(prompt: string): Promise<string> {
-    return await this.aiProvider.generateChallenge(prompt);
+  async execute(dto: GenerateChallengeDto): Promise<string> {
+    return await this.aiProvider.generateChallenge(dto.prompt);
   }
 }

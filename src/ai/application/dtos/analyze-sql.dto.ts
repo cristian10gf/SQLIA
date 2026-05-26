@@ -7,15 +7,19 @@ export class AnalyzeSqlDto {
   query: string;
 
   @ApiProperty({
-    example: `{
-  "data": [
-    {
-      "id": 1,
-      "nombre": "Juan Perez"
-    }
-  ],
-  "rowCount": 1
-}`,
+    example: {
+      id: 1,
+      nombre: 'Juan Perez',
+    },
+  })
+  @IsNotEmpty({ message: 'Se necesitan los resultados esperados.' })
+  expected: string;
+
+  @ApiProperty({
+    example: {
+      id: 1,
+      nombre: 'Juan Perez',
+    },
   })
   @IsNotEmpty({ message: 'Se necesitan los resultados.' })
   results: string;

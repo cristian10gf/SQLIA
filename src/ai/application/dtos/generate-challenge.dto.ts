@@ -3,8 +3,8 @@ import { IsNotEmpty } from 'class-validator';
 
 export class GenerateChallengeDto {
   @ApiProperty({
-    example: `Inserta 10 datos. La columna City puede contener 'Bogotá' o 'Barranquilla''`,
+    example: `Crea un reto para aprender a usar GROUP BY y sumar por grupos`,
   })
   @IsNotEmpty({ message: 'Se necesitan las instrucciones.' })
-  results: string;
+  prompt: string;
 }
