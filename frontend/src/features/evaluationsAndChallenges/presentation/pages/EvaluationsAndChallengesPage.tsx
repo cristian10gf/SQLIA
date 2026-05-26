@@ -172,7 +172,10 @@ function formatAttemptCountdown(milliseconds: number) {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-function getAttemptRemainingMs(attempt: ActiveStudentAttempt, currentTime: Date) {
+function getAttemptRemainingMs(
+  attempt: ActiveStudentAttempt,
+  currentTime: Date,
+) {
   const durationMs = Math.max(1, attempt.durationMinutes) * 60 * 1000;
   const elapsedMs = currentTime.getTime() - attempt.startedAt;
 
@@ -181,6 +184,29 @@ function getAttemptRemainingMs(attempt: ActiveStudentAttempt, currentTime: Date)
 
 export default function EvaluationsAndChallengesPage() {
   const { courseId } = useParams<{ courseId: string }>();
+  const [showAiSuggestionBox, setShowAiSuggestionBox] = useState(false);
+  const [aiSuggestionFeedback, setAiSuggestionFeedback] = useState('');
+
+  const toggleAiSuggestionBox = () => {
+    setShowAiSuggestionBox((currentValue) => !currentValue);
+    setAiSuggestionFeedback('');
+  };
+
+  const [aiSuggestionPrompt, setAiSuggestionPrompt] = useState('');
+
+  const handleSendAiSuggestionPrompt = () => {
+    const prompt = aiSuggestionPrompt.trim();
+
+    if (!prompt) {
+      setAiSuggestionFeedback('Escribe el prompt que quieres enviar a la IA.');
+      return;
+    }
+
+    setAiSuggestionFeedback(
+      'Prompt listo para enviar a la IA. Cuando conectemos el endpoint, aquí se mostrará la sugerencia generada.',
+    );
+  };
+
   const navigate = useNavigate();
 
   const [session] = useState(() => ({
@@ -297,8 +323,9 @@ export default function EvaluationsAndChallengesPage() {
     if (!selectedEvaluationId) return null;
 
     return (
-      evaluations.find((evaluation) => evaluation.id === selectedEvaluationId) ||
-      null
+      evaluations.find(
+        (evaluation) => evaluation.id === selectedEvaluationId,
+      ) || null
     );
   }, [selectedEvaluationId, evaluations]);
 
@@ -656,7 +683,10 @@ export default function EvaluationsAndChallengesPage() {
     }
   };
 
-  const handleEditChallenge = (evaluation: Evaluation, challenge: Challenge) => {
+  const handleEditChallenge = (
+    evaluation: Evaluation,
+    challenge: Challenge,
+  ) => {
     setEditingEvaluationId(evaluation.id);
     setSelectedEvaluationId(evaluation.id);
     setEditingChallengeId(challenge.id);
@@ -720,7 +750,10 @@ export default function EvaluationsAndChallengesPage() {
     setSelectedEvaluationId(evaluationId);
   };
 
-  const handleStartChallenge = (evaluation: Evaluation, challenge: Challenge) => {
+  const handleStartChallenge = (
+    evaluation: Evaluation,
+    challenge: Challenge,
+  ) => {
     if (!isChallengeAvailableForStudent(evaluation, challenge)) return;
 
     setSelectedEvaluationId(null);
@@ -1282,7 +1315,10 @@ export default function EvaluationsAndChallengesPage() {
                         className="eval-code-textarea"
                         value={challengeForm.seedScript}
                         onChange={(event) =>
-                          handleChallengeChange('seedScript', event.target.value)
+                          handleChallengeChange(
+                            'seedScript',
+                            event.target.value,
+                          )
                         }
                       />
                     </div>
@@ -1311,6 +1347,79 @@ export default function EvaluationsAndChallengesPage() {
                   </div>
 
                   <div className="eval-form-actions">
+                    <button
+                      type="button"
+                      className="eval-ai-btn"
+                      onClick={toggleAiSuggestionBox}
+                    >
+                      Sugerencia IA
+                    </button>
+
+                    {showAiSuggestionBox && (
+                      <div
+                        className="eval-ai-modal-overlay"
+                        onClick={() => setShowAiSuggestionBox(false)} // Cierra al hacer clic en el fondo oscuro
+                      >
+                        <div
+                          className="eval-ai-suggestion-box eval-ai-modal"
+                          onClick={(e) => e.stopPropagation()} // Evita que se cierre al hacer clic dentro del modal
+                        >
+                          {/* Botón de cerrar (X) */}
+                          <button
+                            type="button"
+                            className="eval-ai-modal-close-btn"
+                            onClick={() => setShowAiSuggestionBox(false)}
+                          >
+                            &times;
+                          </button>
+
+                          <div>
+                            <h4>Prompt para la IA</h4>
+                            <p>
+                              Escribe la instrucción que quieres enviar a la IA
+                              para generar o mejorar el reto SQL.
+                            </p>
+                          </div>
+
+                          <textarea
+                            value={aiSuggestionPrompt}
+                            onChange={(event) => {
+                              setAiSuggestionPrompt(event.target.value);
+                              setAiSuggestionFeedback('');
+                            }}
+                            placeholder="Ej: Crea un reto SQL sobre joins entre clientes y órdenes, con dificultad media, usando PostgreSQL."
+                          />
+
+                          {aiSuggestionFeedback && (
+                            <span className="eval-ai-feedback">
+                              {aiSuggestionFeedback}
+                            </span>
+                          )}
+
+                          <div className="eval-ai-suggestion-footer">
+                            <button
+                              type="button"
+                              className="eval-secondary-btn"
+                              onClick={() => {
+                                setAiSuggestionPrompt('');
+                                setAiSuggestionFeedback('');
+                              }}
+                            >
+                              Limpiar
+                            </button>
+
+                            <button
+                              type="button"
+                              className="eval-primary-btn"
+                              onClick={handleSendAiSuggestionPrompt}
+                            >
+                              Enviar a IA
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       type="button"
                       className="eval-secondary-btn"
@@ -1407,7 +1516,9 @@ export default function EvaluationsAndChallengesPage() {
                   <div className="eval-card-dates">
                     <span>Inicio: {formatDate(evaluation.startDate)}</span>
                     <span>Cierre: {formatDate(evaluation.endDate)}</span>
-                    <span>Duración: {evaluation.durationMinutes || 90} min</span>
+                    <span>
+                      Duración: {evaluation.durationMinutes || 90} min
+                    </span>
                     <span>Intentos: {evaluation.maxAttempts}</span>
                     <span>Retos: {evaluation.challenges?.length || 0}</span>
                   </div>
@@ -1460,7 +1571,9 @@ export default function EvaluationsAndChallengesPage() {
                                       : 'eval-mini-unavailable'
                                   }
                                 >
-                                  {getChallengeStatusLabel(challenge.visibility)}
+                                  {getChallengeStatusLabel(
+                                    challenge.visibility,
+                                  )}
                                 </span>
 
                                 <button
