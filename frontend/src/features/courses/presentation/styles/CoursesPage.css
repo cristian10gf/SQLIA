@@ -98,6 +98,16 @@
   font-weight: 800;
 }
 
+.courses-error-message {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .courses-toolbar {
   display: flex;
   gap: 14px;
@@ -237,20 +247,60 @@
   font-weight: 700;
 }
 
-.course-submit-button {
+.course-form-actions {
   margin-top: 18px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.course-submit-button,
+.course-import-button {
   padding: 14px 18px;
   border: none;
   border-radius: 15px;
-  background: #2563eb;
-  color: #ffffff;
   font-size: 15px;
   font-weight: 900;
   cursor: pointer;
 }
 
+.course-submit-button {
+  background: #2563eb;
+  color: #ffffff;
+}
+
 .course-submit-button:hover {
   background: #1d4ed8;
+}
+
+.course-submit-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.course-import-button {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.course-import-button:hover {
+  background: #dbeafe;
+}
+
+.course-import-input {
+  display: none;
+}
+
+.course-import-file-name {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.course-import-file-name strong {
+  color: #0f172a;
 }
 
 .course-detail-grid {
@@ -427,7 +477,9 @@
   }
 
   .courses-role-switcher select,
-  .primary-action {
+  .primary-action,
+  .course-submit-button,
+  .course-import-button {
     width: 100%;
   }
 
@@ -449,18 +501,4 @@
   .course-card-main {
     flex-direction: column;
   }
-  .courses-error-message {
-  margin: 0;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: #fee2e2;
-  color: #b91c1c;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.course-submit-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.75;
-}
 }

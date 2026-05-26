@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom';
-
 type ProfessorDashboardProps = {
   courseCount: number;
   isLoading: boolean;
@@ -26,13 +24,6 @@ export function ProfessorDashboard({
           <strong>{isLoading ? '...' : courseCount}</strong>
           <p>Dato cargado desde el backend.</p>
         </article>
-      </div>
-
-      <div className="dashboard-panel">
-        <div className="panel-header">
-          <h2>Gestión académica</h2>
-          <Link to="/courses">Administrar cursos</Link>
-        </div>
       </div>
     </section>
   );

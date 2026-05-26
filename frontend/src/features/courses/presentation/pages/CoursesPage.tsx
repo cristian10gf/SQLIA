@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authStorage } from '../../../auth/infrastructure/authStorage';
 import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
@@ -54,6 +54,7 @@ export function CoursesPage() {
   const navigate = useNavigate();
   const formSectionRef = useRef<HTMLFormElement | null>(null);
   const detailSectionRef = useRef<HTMLElement | null>(null);
+  const studentsImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const [session] = useState(() => ({
     token: authStorage.getToken(),
@@ -72,6 +73,7 @@ export function CoursesPage() {
   const [form, setForm] = useState<CourseForm>(emptyForm);
   const [errors, setErrors] = useState<CourseErrors>({});
   const [message, setMessage] = useState('');
+  const [importFileName, setImportFileName] = useState('');
   const [loadError, setLoadError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -234,6 +236,7 @@ export function CoursesPage() {
       professorId: user.id,
     });
     setErrors({});
+    setImportFileName('');
     setSelectedCourse(null);
     setDetailCourse(null);
     setFormMode('create');
@@ -250,6 +253,7 @@ export function CoursesPage() {
       professorId: course.professorId,
     });
     setErrors({});
+    setImportFileName('');
     setSelectedCourse(course);
     setDetailCourse(null);
     setFormMode('edit');
@@ -269,8 +273,35 @@ export function CoursesPage() {
   const closeForm = () => {
     setForm(emptyForm);
     setErrors({});
+    setImportFileName('');
     setSelectedCourse(null);
     setFormMode(null);
+  };
+
+  const handleOpenStudentsImport = () => {
+    studentsImportInputRef.current?.click();
+  };
+
+  const handleStudentsImportChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const isCsvFile = file.name.toLowerCase().endsWith('.csv');
+
+    if (!isCsvFile) {
+      event.target.value = '';
+      setImportFileName('');
+      setMessage('Solo se permiten archivos .csv para importar estudiantes.');
+      return;
+    }
+
+    setImportFileName(file.name);
+    setMessage(
+      `Archivo "${file.name}" seleccionado para importar estudiantes.`,
+    );
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -514,17 +545,45 @@ export function CoursesPage() {
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="course-submit-button"
-              disabled={isSaving}
-            >
-              {isSaving
-                ? 'Guardando...'
-                : formMode === 'create'
-                  ? 'Guardar curso'
-                  : 'Guardar cambios'}
-            </button>
+            <div className="course-form-actions">
+              <button
+                type="submit"
+                className="course-submit-button"
+                disabled={isSaving}
+              >
+                {isSaving
+                  ? 'Guardando...'
+                  : formMode === 'create'
+                    ? 'Guardar curso'
+                    : 'Guardar cambios'}
+              </button>
+
+              {formMode === 'create' && (
+                <>
+                  <input
+                    ref={studentsImportInputRef}
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="course-import-input"
+                    onChange={handleStudentsImportChange}
+                  />
+
+                  <button
+                    type="button"
+                    className="course-import-button"
+                    onClick={handleOpenStudentsImport}
+                  >
+                    Importar estudiantes
+                  </button>
+                </>
+              )}
+            </div>
+
+            {importFileName && (
+              <p className="course-import-file-name">
+                Archivo seleccionado: <strong>{importFileName}</strong>
+              </p>
+            )}
           </form>
         )}
 
@@ -543,16 +602,6 @@ export function CoursesPage() {
 
             <div className="course-detail-grid">
               <div>
-                <span>ID</span>
-                <strong>{detailCourse.id}</strong>
-              </div>
-
-              <div>
-                <span>Código</span>
-                <strong>{detailCourse.code}</strong>
-              </div>
-
-              <div>
                 <span>Periodo</span>
                 <strong>{detailCourse.period}</strong>
               </div>
@@ -560,11 +609,6 @@ export function CoursesPage() {
               <div>
                 <span>Grupo</span>
                 <strong>{detailCourse.group}</strong>
-              </div>
-
-              <div>
-                <span>ID del profesor</span>
-                <strong>{detailCourse.professorId}</strong>
               </div>
             </div>
           </article>

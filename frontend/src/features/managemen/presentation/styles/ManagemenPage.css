@@ -1,0 +1,378 @@
+.management-page {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.management-heading {
+  max-width: 980px;
+}
+
+.management-heading span,
+.management-panel-header span {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.management-heading h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 38px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: -0.9px;
+}
+
+.management-heading p {
+  margin: 12px 0 0;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.management-success-banner,
+.management-error-banner {
+  padding: 16px 20px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 850;
+}
+
+.management-success-banner {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.management-error-banner {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.management-workspace {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.management-form-panel,
+.management-list-panel {
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+  padding: 24px;
+}
+
+.management-form-panel {
+  position: sticky;
+  top: 24px;
+  scroll-margin-top: 24px;
+}
+
+.management-panel-header {
+  margin-bottom: 20px;
+}
+
+.management-panel-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.management-panel-header p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.management-form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.management-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.management-form-group label {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.management-form-group label small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.management-form-group input,
+.management-form-group select,
+.management-password-field input,
+.management-list-tools input,
+.management-list-tools select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #dbe3ef;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 14px 15px;
+  font-size: 15px;
+  font-weight: 700;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.management-form-group input::placeholder,
+.management-password-field input::placeholder,
+.management-list-tools input::placeholder {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.management-form-group input:focus,
+.management-form-group select:focus,
+.management-password-field input:focus,
+.management-list-tools input:focus,
+.management-list-tools select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.management-password-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.management-password-field button {
+  border: none;
+  border-radius: 14px;
+  padding: 0 14px;
+  background: #edf3ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.management-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+
+.management-primary-btn,
+.management-secondary-btn,
+.management-warning-btn,
+.management-danger-btn {
+  border: none;
+  border-radius: 16px;
+  padding: 13px 18px;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.management-primary-btn:hover,
+.management-secondary-btn:hover,
+.management-warning-btn:hover,
+.management-danger-btn:hover {
+  transform: translateY(-1px);
+  opacity: 0.96;
+}
+
+.management-primary-btn {
+  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+}
+
+.management-secondary-btn {
+  background: #edf3ff;
+  color: #1d4ed8;
+}
+
+.management-warning-btn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.management-danger-btn {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.management-primary-btn.small,
+.management-secondary-btn.small,
+.management-warning-btn.small,
+.management-danger-btn.small {
+  padding: 9px 12px;
+  border-radius: 13px;
+  font-size: 12px;
+}
+
+.management-list-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px 210px;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.management-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.management-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+}
+
+.management-table th {
+  padding: 14px 12px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.management-table td {
+  padding: 16px 12px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  border-bottom: 1px solid #edf2f7;
+  vertical-align: middle;
+}
+
+.management-table td strong {
+  display: block;
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.management-table td span {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.management-role-badge,
+.management-status-badge {
+  display: inline-flex !important;
+  width: fit-content;
+  margin-top: 0 !important;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.management-role-badge.student {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.management-role-badge.admin {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.management-role-badge.professor {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.management-status-badge.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.management-status-badge.inactive {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.management-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.management-empty-state {
+  padding: 24px;
+  border-radius: 18px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+@media (max-width: 1300px) {
+  .management-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .management-form-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .management-list-tools {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .management-heading h1 {
+    font-size: 30px;
+  }
+
+  .management-form-actions {
+    flex-direction: column;
+  }
+
+  .management-primary-btn,
+  .management-secondary-btn,
+  .management-warning-btn,
+  .management-danger-btn {
+    width: 100%;
+  }
+
+  .management-password-field {
+    grid-template-columns: 1fr;
+  }
+
+  .management-password-field button {
+    padding: 13px 14px;
+  }
+}

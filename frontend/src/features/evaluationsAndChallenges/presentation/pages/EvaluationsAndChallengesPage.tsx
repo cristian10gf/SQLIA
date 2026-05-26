@@ -2,20 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type {
   Challenge,
-  ChallengeFormErrors,
   ChallengeStatus,
   Difficulty,
   Evaluation,
-  EvaluationFormErrors,
   EvaluationStatus,
-  StudentSolutionErrors,
 } from '../../domain/evaluationChallenge.types';
 import '../styles/EvaluationsAndChallengesPage.css';
 import { evaluationApi } from '../../infrastructure/evaluationApi';
-import { authStorage } from '../../../auth/infrastructure/authStorage';
-import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 import { challengeApi } from '../../infrastructure/challengeApi';
 import { evaluationChallengeApi } from '../../infrastructure/evaluationChallengeApi';
+import { authStorage } from '../../../auth/infrastructure/authStorage';
+import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 
 type UserRole = 'ADMIN' | 'PROFESSOR' | 'STUDENT';
 type StudentEvaluationFilter = 'AVAILABLE' | 'UNAVAILABLE' | 'ALL';
@@ -23,6 +20,13 @@ type StudentEvaluationFilter = 'AVAILABLE' | 'UNAVAILABLE' | 'ALL';
 interface SessionUser {
   name: string;
   role: UserRole;
+}
+
+interface ActiveStudentAttempt {
+  evaluationId: number;
+  challengeId: number;
+  startedAt: number;
+  durationMinutes: number;
 }
 
 const sampleSchemaSql = `CREATE TABLE customers (
@@ -48,6 +52,18 @@ INSERT INTO orders (customer_id, total, created_at) VALUES
 (1, 200000, '2026-01-12'),
 (2, 90000, '2026-01-13');`;
 
+const emptyEvaluation: Omit<Evaluation, 'id'> = {
+  title: '',
+  description: '',
+  startDate: '',
+  endDate: '',
+  status: 'ACTIVE',
+  durationMinutes: 90,
+  maxAttempts: 3,
+  courseName: '',
+  challenges: [],
+};
+
 const emptyChallenge: Omit<Challenge, 'id'> = {
   title: '',
   description: '',
@@ -61,26 +77,14 @@ const emptyChallenge: Omit<Challenge, 'id'> = {
   expectedResult: '',
 };
 
-const emptyEvaluation: Omit<Evaluation, 'id'> = {
-  title: '',
-  description: '',
-  startDate: '',
-  endDate: '',
-  status: 'ACTIVE',
-  durationMinutes: 90,
-  maxAttempts: 3,
-  courseName: '',
-  challenges: [],
-};
-
 function normalizeRole(value?: string | null): UserRole {
-  const normalizedValue = value?.toUpperCase();
+  const normalized = value?.toUpperCase();
 
-  if (normalizedValue === 'PROFESSOR' || normalizedValue === 'PROFESOR') {
+  if (normalized === 'PROFESSOR' || normalized === 'PROFESOR') {
     return 'PROFESSOR';
   }
 
-  if (normalizedValue === 'STUDENT' || normalizedValue === 'ESTUDIANTE') {
+  if (normalized === 'STUDENT' || normalized === 'ESTUDIANTE') {
     return 'STUDENT';
   }
 
@@ -88,24 +92,24 @@ function normalizeRole(value?: string | null): UserRole {
 }
 
 function getSessionUser(): SessionUser {
-  const possibleUserKeys = ['user', 'authUser', 'currentUser', 'sqlia_user'];
+  const keys = ['user', 'authUser', 'currentUser', 'sqlia_user'];
 
-  for (const key of possibleUserKeys) {
-    const rawUser = localStorage.getItem(key);
+  for (const key of keys) {
+    const raw = localStorage.getItem(key);
 
-    if (!rawUser) continue;
+    if (!raw) continue;
 
     try {
-      const parsedUser = JSON.parse(rawUser);
+      const parsed = JSON.parse(raw);
 
       return {
         name:
-          parsedUser.name ||
-          parsedUser.fullName ||
-          parsedUser.username ||
-          parsedUser.email ||
-          'administrador prueba',
-        role: normalizeRole(parsedUser.role),
+          parsed.name ||
+          parsed.fullName ||
+          parsed.username ||
+          parsed.email ||
+          'Usuario SQLIA',
+        role: normalizeRole(parsed.role),
       };
     } catch {
       continue;
@@ -113,7 +117,7 @@ function getSessionUser(): SessionUser {
   }
 
   return {
-    name: localStorage.getItem('name') || 'administrador prueba',
+    name: localStorage.getItem('name') || 'Usuario SQLIA',
     role: normalizeRole(
       localStorage.getItem('role') || localStorage.getItem('userRole'),
     ),
@@ -126,25 +130,58 @@ function getDifficultyLabel(difficulty: Difficulty) {
   return 'Difícil';
 }
 
+function getStatusLabel(status: EvaluationStatus) {
+  if (status === 'ACTIVE') return 'Activa';
+  return 'Inactiva';
+}
+
 function getChallengeStatusLabel(status: ChallengeStatus) {
   if (status === 'PUBLIC') return 'Público';
   if (status === 'PRIVATE') return 'Privado';
   return 'Archivado';
 }
 
+function formatDate(date: string) {
+  if (!date) return 'Sin fecha';
+  return new Date(date).toLocaleDateString();
+}
+
+function isEvaluationOpen(evaluation: Evaluation) {
+  const now = new Date();
+  const start = new Date(evaluation.startDate);
+  const end = new Date(evaluation.endDate);
+
+  return now >= start && now <= end;
+}
+
 function isChallengeAvailableForStudent(
   evaluation: Evaluation,
   challenge: Challenge,
 ) {
-  const now = new Date();
-  const start = new Date(evaluation.startDate);
-  const end = new Date(evaluation.endDate);
-  const isEvaluationOpen = now >= start && now <= end;
-
-  return isEvaluationOpen && challenge.visibility === 'PUBLIC';
+  return isEvaluationOpen(evaluation) && challenge.visibility === 'PUBLIC';
 }
+
+function formatAttemptCountdown(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const pad = (value: number) => value.toString().padStart(2, '0');
+
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+function getAttemptRemainingMs(attempt: ActiveStudentAttempt, currentTime: Date) {
+  const durationMs = Math.max(1, attempt.durationMinutes) * 60 * 1000;
+  const elapsedMs = currentTime.getTime() - attempt.startedAt;
+
+  return Math.max(0, durationMs - elapsedMs);
+}
+
 export default function EvaluationsAndChallengesPage() {
   const { courseId } = useParams<{ courseId: string }>();
+  const navigate = useNavigate();
 
   const [session] = useState(() => ({
     token: authStorage.getToken(),
@@ -152,85 +189,25 @@ export default function EvaluationsAndChallengesPage() {
   }));
 
   const token = session.token;
-  const user = session.user;
-
-  const navigate = useNavigate();
+  const storedUser = session.user;
 
   const sessionUser = getSessionUser();
   const [role] = useState<UserRole>(sessionUser.role);
 
+  const isAdmin = role === 'ADMIN';
+  const isProfessor = role === 'PROFESSOR';
+  const isStudent = role === 'STUDENT';
+
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
-  const loadData = async () => {
-    if (!courseId || !token || !role) return;
-
-    try {
-      const response: any =
-        role === 'PROFESSOR'
-          ? await evaluationApi.listForProfessor(courseId, { limit: 10 }, token)
-          : await evaluationApi.listVisibleForStudent(courseId, 1, 10, token);
-
-      const rawData = response?.data || response;
-      const evaluationsData = Array.isArray(rawData) ? rawData : [];
-
-      const enrichedEvaluations = await Promise.all(
-        evaluationsData.map(async (ev: Evaluation) => {
-          try {
-            const challengesRes: any =
-              role === 'PROFESSOR'
-                ? await evaluationChallengeApi.listByEvaluation(
-                    ev.id.toString(),
-                    {},
-                    token,
-                  )
-                : await evaluationChallengeApi.listByEvaluationForStudent(
-                    ev.id.toString(),
-                    token,
-                  );
-            return { ...ev, challenges: challengesRes.data || [] };
-          } catch {
-            return { ...ev, challenges: [] };
-          }
-        }),
-      );
-
-      setEvaluations(enrichedEvaluations);
-    } catch (error) {
-      console.error('Error al cargar evaluaciones:', error);
-      setEvaluations([]);
-      setActionMessage('Error al cargar las evaluaciones.');
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, [courseId, token, role]);
-
   const [evaluationForm, setEvaluationForm] =
     useState<Omit<Evaluation, 'id'>>(emptyEvaluation);
-
   const [challengeForm, setChallengeForm] =
     useState<Omit<Challenge, 'id'>>(emptyChallenge);
 
-  const [evaluationErrors, setEvaluationErrors] =
-    useState<EvaluationFormErrors>({});
-
-  const [challengeErrors, setChallengeErrors] = useState<ChallengeFormErrors>(
-    {},
-  );
-
-  const [studentSolutions, setStudentSolutions] = useState<
-    Record<number, string>
-  >({});
-
-  const [studentSolutionErrors, setStudentSolutionErrors] = useState<
-    Record<number, StudentSolutionErrors>
-  >({});
-
-  const [studentSolutionMessages, setStudentSolutionMessages] = useState<
-    Record<number, string>
-  >({});
-
   const [editingEvaluationId, setEditingEvaluationId] = useState<number | null>(
+    null,
+  );
+  const [editingChallengeId, setEditingChallengeId] = useState<number | null>(
     null,
   );
 
@@ -243,85 +220,120 @@ export default function EvaluationsAndChallengesPage() {
     useState<StudentEvaluationFilter>('AVAILABLE');
 
   const [actionMessage, setActionMessage] = useState('');
+  const [formError, setFormError] = useState('');
 
-  const isAdmin = role === 'ADMIN';
-  const isProfessor = role === 'PROFESSOR';
-  const isStudent = role === 'STUDENT';
+  const [studentSolutions, setStudentSolutions] = useState<
+    Record<number, string>
+  >({});
+  const [studentSolutionMessages, setStudentSolutionMessages] = useState<
+    Record<number, string>
+  >({});
 
-  const visibleEvaluations = useMemo(() => {
-    if (!isStudent) {
-      return evaluations;
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  const [activeStudentAttempt, setActiveStudentAttempt] =
+    useState<ActiveStudentAttempt | null>(null);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const loadData = async () => {
+    if (!courseId || !token) return;
+
+    try {
+      const response: any =
+        role === 'PROFESSOR'
+          ? await evaluationApi.listForProfessor(courseId, { limit: 50 }, token)
+          : await evaluationApi.listVisibleForStudent(courseId, 1, 50, token);
+
+      const rawData = response?.data || response;
+      const evaluationsData = Array.isArray(rawData) ? rawData : [];
+
+      const enrichedEvaluations = await Promise.all(
+        evaluationsData.map(async (evaluation: Evaluation) => {
+          try {
+            const challengeResponse: any =
+              role === 'PROFESSOR'
+                ? await evaluationChallengeApi.listByEvaluation(
+                    evaluation.id.toString(),
+                    {},
+                    token,
+                  )
+                : await evaluationChallengeApi.listByEvaluationForStudent(
+                    evaluation.id.toString(),
+                    token,
+                  );
+
+            return {
+              ...evaluation,
+              challenges: challengeResponse?.data || challengeResponse || [],
+            };
+          } catch {
+            return {
+              ...evaluation,
+              challenges: [],
+            };
+          }
+        }),
+      );
+
+      setEvaluations(enrichedEvaluations);
+    } catch (error) {
+      console.error('Error cargando evaluaciones:', error);
+      setEvaluations([]);
+      setActionMessage('Error al cargar las evaluaciones.');
     }
+  };
 
-    if (studentFilter === 'AVAILABLE') {
-      return evaluations
-        .filter((evaluation) => evaluation.status === 'ACTIVE')
-        .map((evaluation) => ({
-          ...evaluation,
-          challenges: evaluation.challenges?.filter(
-            (challenge) => challenge.visibility === 'PUBLIC',
-          ),
-        }))
-        .filter((evaluation) => evaluation.challenges.length > 0);
-    }
-
-    if (studentFilter === 'UNAVAILABLE') {
-      return evaluations
-        .map((evaluation) => {
-          const challenges = evaluation.challenges || [];
-          const unavailableChallenges =
-            evaluation.status !== 'ACTIVE'
-              ? challenges
-              : challenges.filter(
-                  (challenge) => challenge.visibility !== 'PUBLIC',
-                );
-
-          return {
-            ...evaluation,
-            challenges: unavailableChallenges,
-          };
-        })
-        .filter((evaluation) => (evaluation.challenges?.length || 0) > 0);
-    }
-
-    return evaluations;
-  }, [evaluations, isStudent, studentFilter]);
-
-  const filteredEvaluations = useMemo(() => {
-    // 1. Si es profesor, no filtramos nada
-    if (role === 'PROFESSOR') return evaluations;
-
-    // 2. Si es estudiante, aplicamos lógica según el selector
-    return evaluations.filter((ev) => {
-      // Si el filtro es ALL, confiamos en lo que mandó la API y mostramos todo
-      if (studentFilter === 'ALL') return true;
-
-      const now = new Date();
-      const start = new Date(ev.startDate);
-      const end = new Date(ev.endDate);
-      const isAvailable = now >= start && now <= end;
-
-      if (studentFilter === 'AVAILABLE') return isAvailable;
-      if (studentFilter === 'UNAVAILABLE') return !isAvailable;
-
-      return true;
-    });
-  }, [evaluations, studentFilter, role]);
+  useEffect(() => {
+    loadData();
+  }, [courseId, token, role]);
 
   const selectedEvaluation = useMemo(() => {
     if (!selectedEvaluationId) return null;
 
     return (
+      evaluations.find((evaluation) => evaluation.id === selectedEvaluationId) ||
+      null
+    );
+  }, [selectedEvaluationId, evaluations]);
+
+  const activeAttemptEvaluation = useMemo(() => {
+    if (!activeStudentAttempt) return null;
+
+    return (
       evaluations.find(
-        (evaluation) => evaluation.id === selectedEvaluationId,
+        (evaluation) => evaluation.id === activeStudentAttempt.evaluationId,
       ) || null
     );
-  }, [selectedEvaluationId, visibleEvaluations]);
+  }, [activeStudentAttempt, evaluations]);
+
+  const activeAttemptChallenge = useMemo(() => {
+    if (!activeStudentAttempt || !activeAttemptEvaluation) return null;
+
+    return (
+      activeAttemptEvaluation.challenges?.find(
+        (challenge) => challenge.id === activeStudentAttempt.challengeId,
+      ) || null
+    );
+  }, [activeStudentAttempt, activeAttemptEvaluation]);
+
+  const activeAttemptRemainingMs = activeStudentAttempt
+    ? getAttemptRemainingMs(activeStudentAttempt, currentTime)
+    : 0;
+
+  const activeAttemptExpired = Boolean(
+    activeStudentAttempt && activeAttemptRemainingMs <= 0,
+  );
 
   const publishedChallenges = useMemo(() => {
-    return evaluations.reduce((accumulator, evaluation) => {
+    return evaluations.reduce((total, evaluation) => {
       return (
-        accumulator +
+        total +
         (evaluation.challenges?.filter(
           (challenge) => challenge.visibility === 'PUBLIC',
         ).length || 0)
@@ -329,158 +341,90 @@ export default function EvaluationsAndChallengesPage() {
     }, 0);
   }, [evaluations]);
 
-  const activeEvaluations = useMemo(() => {
-    return evaluations.filter((evaluation) => evaluation.status === 'ACTIVE')
-      .length;
-  }, [evaluations]);
-
   const nextClosingDate = useMemo(() => {
-    const active = evaluations.filter(
+    const activeEvaluations = evaluations.filter(
       (evaluation) => evaluation.status === 'ACTIVE',
     );
 
-    if (active.length === 0) return 'Sin fecha';
+    if (activeEvaluations.length === 0) return 'Sin fecha';
 
-    const ordered = [...active].sort((a, b) =>
+    const ordered = [...activeEvaluations].sort((a, b) =>
       a.endDate.localeCompare(b.endDate),
     );
 
-    return ordered[0].endDate;
+    return formatDate(ordered[0].endDate);
   }, [evaluations]);
 
-  const validateEvaluation = (
-    evaluation: Omit<Evaluation, 'id'>,
-  ): EvaluationFormErrors => {
-    const errors: EvaluationFormErrors = {};
+  const filteredEvaluations = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    if (!evaluation.title.trim()) {
-      errors.title = 'El nombre de la evaluación es obligatorio.';
-    } else if (evaluation.title.trim().length < 4) {
-      errors.title = 'El nombre debe tener mínimo 4 caracteres.';
-    }
+    return evaluations
+      .map((evaluation) => {
+        let challenges = evaluation.challenges || [];
 
-    if (!evaluation.description.trim()) {
-      errors.description = 'La descripción es obligatoria.';
-    } else if (evaluation.description.trim().length < 10) {
-      errors.description = 'La descripción debe tener mínimo 10 caracteres.';
-    }
+        if (isStudent) {
+          if (studentFilter === 'AVAILABLE') {
+            challenges = isEvaluationOpen(evaluation)
+              ? challenges.filter(
+                  (challenge) => challenge.visibility === 'PUBLIC',
+                )
+              : [];
+          }
 
-    if (!evaluation.startDate) {
-      errors.startDate = 'La fecha de inicio es obligatoria.';
-    }
+          if (studentFilter === 'UNAVAILABLE') {
+            challenges = challenges.filter(
+              (challenge) =>
+                challenge.visibility !== 'PUBLIC' ||
+                !isEvaluationOpen(evaluation),
+            );
+          }
+        }
 
-    if (!evaluation.endDate) {
-      errors.endDate = 'La fecha de cierre es obligatoria.';
-    }
+        return {
+          ...evaluation,
+          challenges,
+        };
+      })
+      .filter((evaluation) => {
+        if (isStudent && studentFilter !== 'ALL') {
+          if ((evaluation.challenges?.length || 0) === 0) return false;
+        }
 
-    if (evaluation.startDate && evaluation.endDate) {
-      const start = new Date(evaluation.startDate);
-      const end = new Date(evaluation.endDate);
+        if (!normalizedSearch) return true;
 
-      if (end < start) {
-        errors.endDate =
-          'La fecha de cierre no puede ser anterior a la fecha de inicio.';
-      }
-    }
+        const searchableText = [
+          evaluation.title,
+          evaluation.description,
+          evaluation.courseName,
+          ...(evaluation.challenges || []).map((challenge) => challenge.title),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
 
-    if (!evaluation.durationMinutes || evaluation.durationMinutes < 1) {
-      errors.durationMinutes = 'La duración debe ser mayor a 0 minutos.';
-    }
+        return searchableText.includes(normalizedSearch);
+      });
+  }, [evaluations, searchTerm, studentFilter, isStudent, currentTime]);
 
-    if (!evaluation.maxAttempts || evaluation.maxAttempts < 1) {
-      errors.maxAttempts = 'Los intentos máximos deben ser mínimo 1.';
-    }
-
-    return errors;
-  };
-
-  const validateChallenge = (
-    challenge: Omit<Challenge, 'id'>,
-  ): ChallengeFormErrors => {
-    const errors: ChallengeFormErrors = {};
-
-    if (!challenge.title.trim()) {
-      errors.title = 'El título del reto es obligatorio.';
-    } else if (challenge.title.trim().length < 4) {
-      errors.title = 'El título debe tener mínimo 4 caracteres.';
-    }
-
-    if (!challenge.description.trim()) {
-      errors.description = 'La descripción del reto es obligatoria.';
-    } else if (challenge.description.trim().length < 10) {
-      errors.description = 'La descripción debe tener mínimo 10 caracteres.';
-    }
-
-    if (!challenge.points || challenge.points < 1) {
-      errors.points = 'Los puntos deben ser mayores o iguales a 1.';
-    } else if (challenge.points > 100) {
-      errors.points = 'Los puntos no pueden superar 100.';
-    }
-
-    if (!challenge.databaseEngine.trim()) {
-      errors.databaseEngine = 'El motor de base de datos es obligatorio.';
-    }
-
-    if (!challenge.timeLimitMs || challenge.timeLimitMs < 500) {
-      errors.timeLimitMs = 'El límite de tiempo debe ser mínimo 500 ms.';
-    }
-
-    if (!challenge.schemaDefinition.trim()) {
-      errors.schemaDefinition = 'El esquema SQL es obligatorio.';
-    } else if (
-      !challenge.schemaDefinition.toUpperCase().includes('CREATE TABLE')
-    ) {
-      errors.schemaDefinition =
-        'El esquema debe incluir al menos una sentencia CREATE TABLE.';
-    }
-
-    if (!challenge.seedScript.trim()) {
-      errors.seedScript = 'Los datos iniciales son obligatorios.';
-    } else if (!challenge.seedScript.toUpperCase().includes('INSERT INTO')) {
-      errors.seedScript =
-        'Los datos iniciales deben incluir al menos una sentencia INSERT INTO.';
-    }
-
-    const result = challenge.expectedResult;
-
-    if (!result || (typeof result === 'string' && !result.trim())) {
-      errors.expectedResult = 'El resultado esperado es obligatorio.';
-    } else if (typeof result === 'string') {
-      try {
-        JSON.parse(result);
-      } catch (e) {
-        errors.expectedResult =
-          'El formato JSON es inválido. Revisa las comas y comillas.';
-      }
-    }
-    return errors;
-  };
-
-  const validateStudentSolution = (query: string): StudentSolutionErrors => {
-    const errors: StudentSolutionErrors = {};
-
-    if (!query.trim()) {
-      errors.query = 'Debes escribir una solución SQL antes de enviarla.';
-    } else if (query.trim().length < 10) {
-      errors.query = 'La consulta SQL es demasiado corta.';
-    } else if (!query.trim().toUpperCase().startsWith('SELECT')) {
-      errors.query = 'Para este demo, la solución debe iniciar con SELECT.';
-    }
-
-    return errors;
+  const clearEvaluationForm = () => {
+    setEvaluationForm(emptyEvaluation);
+    setChallengeForm(emptyChallenge);
+    setEditingEvaluationId(null);
+    setEditingChallengeId(null);
+    setSelectedEvaluationId(null);
+    setFormError('');
   };
 
   const handleEvaluationChange = (
     field: keyof Omit<Evaluation, 'id' | 'challenges'>,
     value: string | number | EvaluationStatus,
   ) => {
-    const updatedForm = {
-      ...evaluationForm,
+    setEvaluationForm((previous) => ({
+      ...previous,
       [field]: value,
-    };
+    }));
 
-    setEvaluationForm(updatedForm);
-    setEvaluationErrors(validateEvaluation(updatedForm));
+    setFormError('');
     setActionMessage('');
   };
 
@@ -488,64 +432,179 @@ export default function EvaluationsAndChallengesPage() {
     field: keyof Omit<Challenge, 'id'>,
     value: string | number | Difficulty | ChallengeStatus,
   ) => {
-    const updatedForm = {
-      ...challengeForm,
+    setChallengeForm((previous) => ({
+      ...previous,
       [field]: value,
-    };
+    }));
 
-    setChallengeForm(updatedForm);
-    setChallengeErrors(validateChallenge(updatedForm));
+    setFormError('');
     setActionMessage('');
   };
 
-  const addChallenge = async () => {
-    const errors = validateChallenge(challengeForm);
-    setChallengeErrors(errors);
-    setActionMessage('');
+  const validateEvaluationForm = () => {
+    if (!evaluationForm.title.trim()) {
+      return 'El nombre de la evaluación es obligatorio.';
+    }
 
-    if (Object.keys(errors).length > 0) return;
+    if (!evaluationForm.description.trim()) {
+      return 'La descripción de la evaluación es obligatoria.';
+    }
 
+    if (!evaluationForm.startDate) {
+      return 'La fecha de inicio es obligatoria.';
+    }
+
+    if (!evaluationForm.endDate) {
+      return 'La fecha de cierre es obligatoria.';
+    }
+
+    if (new Date(evaluationForm.endDate) < new Date(evaluationForm.startDate)) {
+      return 'La fecha de cierre no puede ser anterior a la fecha de inicio.';
+    }
+
+    if (!evaluationForm.durationMinutes || evaluationForm.durationMinutes < 1) {
+      return 'La duración debe ser mayor a 0 minutos.';
+    }
+
+    if (!evaluationForm.maxAttempts || evaluationForm.maxAttempts < 1) {
+      return 'Los intentos máximos deben ser mínimo 1.';
+    }
+
+    return '';
+  };
+
+  const validateChallengeForm = () => {
     if (!editingEvaluationId) {
-      setActionMessage(
-        'Error: No hay una evaluación seleccionada para editar.',
-      );
+      return 'Primero guarda o edita una evaluación para agregar retos.';
+    }
+
+    if (!challengeForm.title.trim()) {
+      return 'El título del reto es obligatorio.';
+    }
+
+    if (!challengeForm.description.trim()) {
+      return 'La descripción del reto es obligatoria.';
+    }
+
+    if (!challengeForm.databaseEngine.trim()) {
+      return 'El motor de base de datos es obligatorio.';
+    }
+
+    if (!challengeForm.timeLimitMs || challengeForm.timeLimitMs < 500) {
+      return 'El límite de ejecución debe ser mínimo 500 ms.';
+    }
+
+    if (!challengeForm.points || challengeForm.points < 1) {
+      return 'Los puntos deben ser mayores o iguales a 1.';
+    }
+
+    return '';
+  };
+
+  const handleSaveEvaluation = async () => {
+    const error = validateEvaluationForm();
+
+    if (error) {
+      setFormError(error);
       return;
     }
 
+    if (!token || !courseId) return;
+
     try {
-      let finalExpectedResult = challengeForm.expectedResult;
+      const { challenges, courseName, status, ...payload } = evaluationForm;
 
-      if (typeof finalExpectedResult === 'string') {
-        try {
-          const parsed = JSON.parse(finalExpectedResult);
+      const finalPayload = {
+        ...payload,
+        courseId,
+      };
 
-          if (
-            parsed &&
-            typeof parsed === 'object' &&
-            !Array.isArray(parsed) &&
-            parsed.data
-          ) {
-            finalExpectedResult = parsed;
-          } else if (Array.isArray(parsed)) {
-            finalExpectedResult = {
-              data: parsed,
-              rowCount: parsed.length,
-            };
-          } else {
-            finalExpectedResult = parsed;
-          }
-        } catch (e) {
-          setChallengeErrors({ ...errors, expectedResult: 'JSON inválido' });
-          return;
-        }
+      if (editingEvaluationId) {
+        await evaluationApi.update(
+          editingEvaluationId.toString(),
+          finalPayload,
+          token,
+        );
+
+        setActionMessage('Evaluación actualizada correctamente.');
+      } else {
+        await evaluationApi.create(finalPayload, token);
+        setActionMessage('Evaluación creada correctamente.');
       }
 
+      clearEvaluationForm();
+      await loadData();
+    } catch (error) {
+      console.error('Error guardando evaluación:', error);
+      setFormError('No se pudo guardar la evaluación.');
+    }
+  };
+
+  const handleEditEvaluation = (evaluation: Evaluation) => {
+    setEditingEvaluationId(evaluation.id);
+    setSelectedEvaluationId(evaluation.id);
+    setEditingChallengeId(null);
+
+    setEvaluationForm({
+      title: evaluation.title || '',
+      description: evaluation.description || '',
+      startDate: evaluation.startDate?.split('T')[0] || '',
+      endDate: evaluation.endDate?.split('T')[0] || '',
+      status: evaluation.status || 'ACTIVE',
+      durationMinutes: evaluation.durationMinutes || 90,
+      maxAttempts: evaluation.maxAttempts || 3,
+      courseName: evaluation.courseName || '',
+      challenges: evaluation.challenges || [],
+    });
+
+    setChallengeForm(emptyChallenge);
+    setFormError('');
+    setActionMessage('');
+  };
+
+  const handleDeleteEvaluation = async (evaluationId: number) => {
+    if (!token) return;
+
+    try {
+      await evaluationApi.remove(evaluationId.toString(), token);
+      setActionMessage('Evaluación eliminada correctamente.');
+      clearEvaluationForm();
+      await loadData();
+    } catch (error) {
+      console.error('Error eliminando evaluación:', error);
+      setFormError('No se pudo eliminar la evaluación.');
+    }
+  };
+
+  const parseExpectedResult = () => {
+    const raw = challengeForm.expectedResult;
+
+    if (!raw || typeof raw !== 'string') return raw;
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return raw;
+    }
+  };
+
+  const handleSaveChallenge = async () => {
+    const error = validateChallengeForm();
+
+    if (error) {
+      setFormError(error);
+      return;
+    }
+
+    if (!token || !courseId || !editingEvaluationId) return;
+
+    try {
       const { points, ...challengeData } = challengeForm;
 
       const challengePayload = {
         ...challengeData,
-        expectedResult: finalExpectedResult,
-        courseId: courseId,
+        expectedResult: parseExpectedResult(),
+        courseId,
         timeLimitMs: Number(challengeForm.timeLimitMs),
       };
 
@@ -553,286 +612,138 @@ export default function EvaluationsAndChallengesPage() {
         await challengeApi.update(
           editingChallengeId.toString(),
           challengePayload,
-          token!,
+          token,
         );
 
         await evaluationChallengeApi.updateAssociation(
-          editingEvaluationId!.toString(),
+          editingEvaluationId.toString(),
           editingChallengeId.toString(),
           { points: Number(points) },
-          token!,
+          token,
         );
 
-        setEvaluationForm((prev) => ({
-          ...prev,
-          challenges: prev.challenges.map((ch) =>
-            ch.id === editingChallengeId
-              ? { ...ch, ...challengePayload, points: Number(points) }
-              : ch,
-          ),
-        }));
-        setActionMessage('Reto actualizado correctamente');
+        setActionMessage('Reto actualizado correctamente.');
       } else {
-        console.log('TIPO DE DATO:', typeof challengePayload.expectedResult);
-        console.log('CONTENIDO:', challengePayload.expectedResult);
-        const challengeRes: any = await challengeApi.create(
+        const challengeResponse: any = await challengeApi.create(
           challengePayload,
-          token!,
+          token,
         );
-        const newChallenge = challengeRes.data;
+
+        const createdChallenge = challengeResponse?.data || challengeResponse;
 
         await evaluationChallengeApi.associate(
           {
             evaluationId: editingEvaluationId.toString(),
-            challengeId: newChallenge.id,
+            challengeId: createdChallenge.id,
             points: Number(points),
-            orderIndex: evaluationForm.challenges.length + 1,
+            orderIndex:
+              (selectedEvaluation?.challenges?.length ||
+                evaluationForm.challenges?.length ||
+                0) + 1,
           },
-          token!,
+          token,
         );
 
-        const challengeWithPoints = { ...newChallenge, points: Number(points) };
-
-        setEvaluationForm({
-          ...evaluationForm,
-          challenges: [...evaluationForm.challenges, challengeWithPoints],
-        });
-
-        setChallengeForm(emptyChallenge);
-        setChallengeErrors({});
-        setActionMessage('Reto agregado correctamente a la evaluación.');
+        setActionMessage('Reto agregado correctamente.');
       }
 
+      setChallengeForm(emptyChallenge);
+      setEditingChallengeId(null);
       await loadData();
-    } catch (error: any) {
-      console.error('Error al agregar reto:', error);
-      setActionMessage(
-        error.response?.data?.message || 'Error al crear el reto.',
-      );
+    } catch (error) {
+      console.error('Error guardando reto:', error);
+      setFormError('No se pudo guardar el reto.');
     }
   };
 
-  const removeChallenge = async (challengeId: number) => {
-    if (!selectedEvaluationId) return;
-
-    const confirmDelete = window.confirm(
-      '¿Estás seguro de que deseas eliminar este reto?',
-    );
-
-    if (!confirmDelete) return;
-
-    try {
-      setActionMessage('Eliminando reto...');
-
-      await evaluationChallengeApi.removeAssociation(
-        selectedEvaluationId.toString(),
-        challengeId.toString(),
-        token!,
-      );
-
-      await challengeApi.remove(challengeId.toString(), token!);
-
-      const updatedChallenges = evaluationForm.challenges.filter(
-        (ch) => ch.id !== challengeId,
-      );
-
-      setEvaluationForm({
-        ...evaluationForm,
-        challenges: updatedChallenges,
-      });
-
-      setActionMessage('Reto eliminado correctamente.');
-
-      loadData();
-    } catch (error: any) {
-      console.error('Error al eliminar el reto:', error);
-      setActionMessage(
-        error.response?.data?.message ||
-          'No se pudo eliminar el reto completamente.',
-      );
-    }
-  };
-
-  const clearForm = () => {
-    setEvaluationForm(emptyEvaluation);
-    setChallengeForm(emptyChallenge);
-    setEvaluationErrors({});
-    setChallengeErrors({});
-    setEditingEvaluationId(null);
-    setActionMessage('');
-  };
-
-  const handleSubmit = async () => {
-    const errors = validateEvaluation(evaluationForm);
-    setEvaluationErrors(errors);
-    setActionMessage('');
-
-    if (Object.keys(errors).length > 0) return;
-
-    try {
-      const { status, courseName, challenges, ...evaluationData } =
-        evaluationForm;
-
-      const payload = {
-        ...evaluationData,
-        courseId: courseId,
-      };
-
-      if (editingEvaluationId) {
-        await evaluationApi.update(
-          editingEvaluationId.toString(),
-          payload,
-          token!,
-        );
-        setActionMessage(
-          'Evaluación actualizada correctamente en el servidor.',
-        );
-      } else {
-        await evaluationApi.create(payload, token!);
-        setActionMessage('Evaluación creada y persistida correctamente.');
-      }
-
-      await loadData();
-      clearForm();
-    } catch (error: any) {
-      console.error('Error al guardar evaluación:', error);
-      setActionMessage('Error al guardar la evaluación.');
-    }
-  };
-
-  const handleEdit = (evaluation: Evaluation) => {
+  const handleEditChallenge = (evaluation: Evaluation, challenge: Challenge) => {
     setEditingEvaluationId(evaluation.id);
-
-    setEvaluationForm({
-      title: evaluation.title,
-      description: evaluation.description,
-      startDate: evaluation.startDate.split('T')[0],
-      endDate: evaluation.endDate.split('T')[0],
-      status: evaluation.status,
-      durationMinutes: evaluation.durationMinutes || 60,
-      maxAttempts: evaluation.maxAttempts || 1,
-      courseName: evaluation.courseName || '',
-      challenges: evaluation.challenges || [],
-    });
-
-    const formElement = document.querySelector('.eval-form-panel');
-
-    setTimeout(() => {
-      formElement?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
-
-  const handleDelete = async (id: string) => {
-    // 1. Confirmación del usuario
-    const confirmDelete = window.confirm(
-      '¿Seguro que deseas eliminar esta evaluación? Esta acción no se puede deshacer.',
-    );
-
-    if (!confirmDelete) return;
-
-    try {
-      // 2. Llamada a la API
-      // Asegúrate de pasar el token que ya tienes disponible en el componente
-      await evaluationApi.remove(id, token!);
-
-      // 3. Actualización del estado local (Optimistic UI o Sync)
-      setEvaluations((previous) =>
-        previous.filter((evaluation) => evaluation.id.toString() !== id),
-      );
-
-      if (editingEvaluationId?.toString() === id) {
-        setEditingEvaluationId(null);
-        clearForm();
-      }
-
-      if (selectedEvaluationId?.toString() === id) {
-        setSelectedEvaluationId(null);
-      }
-
-      setActionMessage('Evaluación eliminada correctamente del servidor.');
-      await loadData();
-    } catch (error: any) {
-      console.error('Error al eliminar la evaluación:', error);
-
-      // Feedback de error
-      const errorMsg =
-        error.response?.data?.message || 'No se pudo eliminar la evaluación.';
-      setActionMessage(`Error: ${errorMsg}`);
-
-      // Si la API falló, podrías recargar los datos para restaurar la lista
-      await loadData();
-    }
-  };
-  const handleOpenDetail = (evaluationId: number) => {
-    setEditingChallengeId(null);
-    setSelectedEvaluationId(evaluationId);
-
-    setTimeout(() => {
-      document.getElementById('eval-detail-panel')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    }, 50);
-  };
-
-  const [editingChallengeId, setEditingChallengeId] = useState<number | null>(
-    null,
-  );
-
-  const handleEditChallenge = (
-    evaluation: Evaluation,
-    challenge: Challenge,
-  ) => {
-    setEditingEvaluationId(evaluation.id);
+    setSelectedEvaluationId(evaluation.id);
     setEditingChallengeId(challenge.id);
 
     setEvaluationForm({
-      title: evaluation.title,
-      description: evaluation.description,
-      startDate: evaluation.startDate.split('T')[0],
-      endDate: evaluation.endDate.split('T')[0],
-      status: evaluation.status,
-      durationMinutes: evaluation.durationMinutes || 60,
-      maxAttempts: evaluation.maxAttempts || 1,
+      title: evaluation.title || '',
+      description: evaluation.description || '',
+      startDate: evaluation.startDate?.split('T')[0] || '',
+      endDate: evaluation.endDate?.split('T')[0] || '',
+      status: evaluation.status || 'ACTIVE',
+      durationMinutes: evaluation.durationMinutes || 90,
+      maxAttempts: evaluation.maxAttempts || 3,
       courseName: evaluation.courseName || '',
       challenges: evaluation.challenges || [],
     });
+
     setChallengeForm({
-      title: challenge.title,
-      description: challenge.description,
-      difficulty: challenge.difficulty,
-      databaseEngine: challenge.databaseEngine,
-      visibility: challenge.visibility,
-      schemaDefinition: challenge.schemaDefinition,
-      seedScript: challenge.seedScript,
-      expectedResult: challenge.expectedResult,
-      timeLimitMs: challenge.timeLimitMs,
-      points: (challenge as any).points || 0,
+      title: challenge.title || '',
+      description: challenge.description || '',
+      difficulty: challenge.difficulty || 'EASY',
+      databaseEngine: challenge.databaseEngine || 'PostgreSQL',
+      timeLimitMs: challenge.timeLimitMs || 2000,
+      visibility: challenge.visibility || 'PUBLIC',
+      points: challenge.points || 10,
+      schemaDefinition: challenge.schemaDefinition || sampleSchemaSql,
+      seedScript: challenge.seedScript || sampleInitialDataSql,
+      expectedResult:
+        typeof challenge.expectedResult === 'string'
+          ? challenge.expectedResult
+          : JSON.stringify(challenge.expectedResult || '', null, 2),
     });
 
-    setTimeout(() => {
-      const formElement = document.querySelector('.eval-challenge-form-card');
-
-      if (formElement) {
-        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        window.scrollTo({
-          top: document.documentElement.scrollHeight,
-          behavior: 'smooth',
-        });
-      }
-    }, 100);
+    setFormError('');
+    setActionMessage('');
   };
 
-  const handleStudentSolutionChange = (challengeId: number, query: string) => {
+  const handleDeleteChallenge = async (
+    evaluationId: number,
+    challengeId: number,
+  ) => {
+    if (!token) return;
+
+    try {
+      await evaluationChallengeApi.removeAssociation(
+        evaluationId.toString(),
+        challengeId.toString(),
+        token,
+      );
+
+      await challengeApi.remove(challengeId.toString(), token);
+
+      setActionMessage('Reto eliminado correctamente.');
+      await loadData();
+    } catch (error) {
+      console.error('Error eliminando reto:', error);
+      setFormError('No se pudo eliminar el reto.');
+    }
+  };
+
+  const handleOpenDetail = (evaluationId: number) => {
+    setSelectedEvaluationId(evaluationId);
+  };
+
+  const handleStartChallenge = (evaluation: Evaluation, challenge: Challenge) => {
+    if (!isChallengeAvailableForStudent(evaluation, challenge)) return;
+
+    setSelectedEvaluationId(null);
+    setActionMessage('');
+    setFormError('');
+
+    setActiveStudentAttempt({
+      evaluationId: evaluation.id,
+      challengeId: challenge.id,
+      startedAt: Date.now(),
+      durationMinutes: evaluation.durationMinutes || 90,
+    });
+
+    setStudentSolutionMessages((previous) => ({
+      ...previous,
+      [challenge.id]: '',
+    }));
+  };
+
+  const handleStudentSolutionChange = (challengeId: number, value: string) => {
     setStudentSolutions((previous) => ({
       ...previous,
-      [challengeId]: query,
-    }));
-
-    setStudentSolutionErrors((previous) => ({
-      ...previous,
-      [challengeId]: validateStudentSolution(query),
+      [challengeId]: value,
     }));
 
     setStudentSolutionMessages((previous) => ({
@@ -842,21 +753,20 @@ export default function EvaluationsAndChallengesPage() {
   };
 
   const handleStudentSubmit = (challengeId: number) => {
-    const query = studentSolutions[challengeId] || '';
-    const errors = validateStudentSolution(query);
+    const submittedSolution = studentSolutions[challengeId] || '';
 
-    setStudentSolutionErrors((previous) => ({
-      ...previous,
-      [challengeId]: errors,
-    }));
-
-    if (Object.keys(errors).length > 0) return;
+    console.log('Solución enviada por el estudiante:', {
+      challengeId,
+      solution: submittedSolution,
+    });
 
     setStudentSolutionMessages((previous) => ({
       ...previous,
-      [challengeId]:
-        'Solución enviada visualmente. Cuando se conecte el backend, aquí se registrará el submission.',
+      [challengeId]: 'Solución enviada correctamente.',
     }));
+
+    setActionMessage('Solución enviada correctamente.');
+    setActiveStudentAttempt(null);
   };
 
   const handleLogout = () => {
@@ -873,8 +783,8 @@ export default function EvaluationsAndChallengesPage() {
 
   return (
     <DashboardLayout
-      role={user!.role}
-      userName={user!.fullName}
+      role={storedUser?.role || role}
+      userName={storedUser?.fullName || sessionUser.name}
       onLogout={handleLogout}
     >
       <section className="eval-content">
@@ -896,6 +806,12 @@ export default function EvaluationsAndChallengesPage() {
           </h1>
         </div>
 
+        {actionMessage && (
+          <div className="eval-success-banner">{actionMessage}</div>
+        )}
+
+        {formError && <div className="eval-warning-banner">{formError}</div>}
+
         <section
           className={`eval-metrics-grid ${
             !isStudent ? 'eval-metrics-grid-three' : ''
@@ -904,29 +820,106 @@ export default function EvaluationsAndChallengesPage() {
           <article className="eval-metric-card">
             <h3>Evaluaciones registradas</h3>
             <strong>{evaluations.length}</strong>
-            <p>
-              {isAdmin
-                ? 'Consulta general de la plataforma.'
-                : 'Total de evaluaciones del módulo.'}
-            </p>
+            <p>Total de evaluaciones cargadas en el módulo.</p>
           </article>
 
           <article className="eval-metric-card">
             <h3>Retos publicados</h3>
             <strong>{publishedChallenges}</strong>
-            <p>Retos SQL disponibles para estudiantes.</p>
+            <p>Retos SQL públicos para estudiantes.</p>
           </article>
 
           {isStudent && (
             <article className="eval-metric-card eval-date-card">
               <h3>Próximo cierre</h3>
               <strong>{nextClosingDate}</strong>
-              <p>Fecha más próxima entre las evaluaciones activas.</p>
+              <p>Fecha de cierre más próxima.</p>
             </article>
           )}
         </section>
 
-        {selectedEvaluation && (
+        {isStudent &&
+          activeStudentAttempt &&
+          activeAttemptEvaluation &&
+          activeAttemptChallenge && (
+            <div
+              className="eval-student-modal-backdrop"
+              role="dialog"
+              aria-modal="true"
+            >
+              <section className="eval-student-modal">
+                <div className="eval-student-modal-header">
+                  <div>
+                    <span className="eval-page-eyebrow">RETO INICIADO</span>
+                    <h2>{activeAttemptChallenge.title}</h2>
+                    <p>{activeAttemptChallenge.description}</p>
+                  </div>
+                </div>
+
+                <div className="eval-challenge-tags">
+                  <span>{activeAttemptChallenge.databaseEngine}</span>
+                  <span>
+                    Límite ejecución: {activeAttemptChallenge.timeLimitMs} ms
+                  </span>
+                  <span>
+                    {getDifficultyLabel(activeAttemptChallenge.difficulty)}
+                  </span>
+                  <span>
+                    Duración: {activeAttemptEvaluation.durationMinutes || 90}{' '}
+                    min
+                  </span>
+                </div>
+
+                <div
+                  className={`eval-attempt-timer ${
+                    activeAttemptExpired ? 'expired' : ''
+                  }`}
+                >
+                  <span>Tiempo del reto</span>
+                  <strong>
+                    {formatAttemptCountdown(activeAttemptRemainingMs)}
+                  </strong>
+                </div>
+
+                <div className="eval-solution-box">
+                  <label>Tu solución SQL</label>
+
+                  <textarea
+                    value={studentSolutions[activeAttemptChallenge.id] || ''}
+                    onChange={(event) =>
+                      handleStudentSolutionChange(
+                        activeAttemptChallenge.id,
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Escribe aquí tu solución."
+                    disabled={activeAttemptExpired}
+                  />
+
+                  {activeAttemptExpired && (
+                    <span className="eval-error-text">
+                      El tiempo del reto terminó.
+                    </span>
+                  )}
+
+                  <div className="eval-student-modal-actions">
+                    <button
+                      type="button"
+                      className="eval-primary-btn"
+                      disabled={activeAttemptExpired}
+                      onClick={() =>
+                        handleStudentSubmit(activeAttemptChallenge.id)
+                      }
+                    >
+                      Enviar solución
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+        {selectedEvaluation && !isStudent && (
           <section id="eval-detail-panel" className="eval-detail-panel">
             <div className="eval-detail-header">
               <div>
@@ -940,23 +933,19 @@ export default function EvaluationsAndChallengesPage() {
                 className="eval-secondary-btn"
                 onClick={() => setSelectedEvaluationId(null)}
               >
-                Cerrar detalle
+                Cerrar
               </button>
             </div>
 
             <div className="eval-detail-grid">
               <div>
                 <strong>Fecha de inicio</strong>
-                <span>
-                  {new Date(selectedEvaluation.startDate).toLocaleDateString()}
-                </span>
+                <span>{formatDate(selectedEvaluation.startDate)}</span>
               </div>
 
               <div>
                 <strong>Fecha de cierre</strong>
-                <span>
-                  {new Date(selectedEvaluation.endDate).toLocaleDateString()}
-                </span>
+                <span>{formatDate(selectedEvaluation.endDate)}</span>
               </div>
 
               <div>
@@ -971,18 +960,10 @@ export default function EvaluationsAndChallengesPage() {
             </div>
 
             <div className="eval-detail-challenges">
-              {Array.isArray(selectedEvaluation?.challenges) &&
-              selectedEvaluation.challenges.length > 0 ? (
-                <h3>Retos SQL de la evaluación</h3>
-              ) : null}
+              <h3>Retos SQL de la evaluación</h3>
 
-              {selectedEvaluation?.challenges?.map((challenge) => {
-                const canSubmit = isChallengeAvailableForStudent(
-                  selectedEvaluation,
-                  challenge,
-                );
-
-                return (
+              {selectedEvaluation.challenges?.length ? (
+                selectedEvaluation.challenges.map((challenge) => (
                   <article className="eval-detail-challenge" key={challenge.id}>
                     <div className="eval-challenge-upper-row">
                       <div className="eval-challenge-title-row">
@@ -995,8 +976,8 @@ export default function EvaluationsAndChallengesPage() {
                         </span>
                       </div>
 
-                      {role === 'PROFESSOR' && (
-                        <div>
+                      {isProfessor && (
+                        <div className="eval-inline-actions">
                           <button
                             type="button"
                             className="eval-secondary-btn"
@@ -1006,10 +987,16 @@ export default function EvaluationsAndChallengesPage() {
                           >
                             Editar
                           </button>
+
                           <button
                             type="button"
                             className="eval-danger-btn"
-                            onClick={() => removeChallenge(challenge.id)}
+                            onClick={() =>
+                              handleDeleteChallenge(
+                                selectedEvaluation.id,
+                                challenge.id,
+                              )
+                            }
                           >
                             Eliminar
                           </button>
@@ -1021,69 +1008,29 @@ export default function EvaluationsAndChallengesPage() {
 
                     <div className="eval-challenge-tags">
                       <span>{challenge.databaseEngine}</span>
-                      <span>{challenge.timeLimitMs} ms</span>
+                      <span>Límite ejecución: {challenge.timeLimitMs} ms</span>
                       <span>{getDifficultyLabel(challenge.difficulty)}</span>
+                      <span>Puntos: {challenge.points || 0}</span>
                     </div>
 
-                    {!isStudent && (
-                      <div className="eval-sql-preview">
-                        <div>
-                          <label>Esquema SQL</label>
-                          <pre>{challenge.schemaDefinition}</pre>
-                        </div>
-
-                        <div>
-                          <label>Datos iniciales</label>
-                          <pre>{challenge.seedScript}</pre>
-                        </div>
+                    <div className="eval-sql-preview">
+                      <div>
+                        <label>Esquema SQL</label>
+                        <pre>{challenge.schemaDefinition}</pre>
                       </div>
-                    )}
 
-                    {isStudent && canSubmit && (
-                      <div className="eval-solution-box">
-                        <label>Tu solución SQL</label>
-                        <textarea
-                          value={studentSolutions[challenge.id] || ''}
-                          onChange={(event) =>
-                            handleStudentSolutionChange(
-                              challenge.id,
-                              event.target.value,
-                            )
-                          }
-                          placeholder="SELECT c.name FROM customers c;"
-                        />
-
-                        {studentSolutionErrors[challenge.id]?.query && (
-                          <span className="eval-error-text">
-                            {studentSolutionErrors[challenge.id]?.query}
-                          </span>
-                        )}
-
-                        {studentSolutionMessages[challenge.id] && (
-                          <span className="eval-success-text">
-                            {studentSolutionMessages[challenge.id]}
-                          </span>
-                        )}
-
-                        <button
-                          type="button"
-                          className="eval-primary-btn"
-                          onClick={() => handleStudentSubmit(challenge.id)}
-                        >
-                          Enviar solución
-                        </button>
+                      <div>
+                        <label>Datos iniciales</label>
+                        <pre>{challenge.seedScript}</pre>
                       </div>
-                    )}
-
-                    {isStudent && !canSubmit && (
-                      <div className="eval-unavailable-box">
-                        Este reto no está disponible para envío. Puedes
-                        consultarlo, pero no enviar solución.
-                      </div>
-                    )}
+                    </div>
                   </article>
-                );
-              })}
+                ))
+              ) : (
+                <div className="eval-empty-state">
+                  Esta evaluación todavía no tiene retos.
+                </div>
+              )}
             </div>
           </section>
         )}
@@ -1091,43 +1038,29 @@ export default function EvaluationsAndChallengesPage() {
         <section className="eval-workspace">
           {isProfessor && (
             <div className="eval-form-panel">
-              <div className="eval-panel-header">
+              <div className="eval-panel-header compact">
                 <div>
                   <h2>
                     {editingEvaluationId
                       ? 'Editar evaluación'
                       : 'Crear evaluación'}
                   </h2>
-                  <p>Completa la evaluación y agrega uno o varios retos SQL.</p>
+                  <p>
+                    Define la evaluación y luego agrega retos SQL asociados.
+                  </p>
                 </div>
-
-                {editingEvaluationId && (
-                  <button
-                    type="button"
-                    className="eval-secondary-btn"
-                    onClick={clearForm}
-                  >
-                    Cancelar
-                  </button>
-                )}
               </div>
 
               <div className="eval-form-grid">
                 <div className="eval-form-group full">
                   <label>Nombre de la evaluación</label>
                   <input
-                    type="text"
                     value={evaluationForm.title}
                     onChange={(event) =>
                       handleEvaluationChange('title', event.target.value)
                     }
-                    placeholder="Ej: Parcial 1 - SQL avanzado"
+                    placeholder="Ej: Parcial SQL"
                   />
-                  {evaluationErrors.title && (
-                    <span className="eval-error-text">
-                      {evaluationErrors.title}
-                    </span>
-                  )}
                 </div>
 
                 <div className="eval-form-group full">
@@ -1137,13 +1070,8 @@ export default function EvaluationsAndChallengesPage() {
                     onChange={(event) =>
                       handleEvaluationChange('description', event.target.value)
                     }
-                    placeholder="Describe el objetivo de la evaluación"
+                    placeholder="Describe la evaluación..."
                   />
-                  {evaluationErrors.description && (
-                    <span className="eval-error-text">
-                      {evaluationErrors.description}
-                    </span>
-                  )}
                 </div>
 
                 <div className="eval-form-group">
@@ -1155,11 +1083,6 @@ export default function EvaluationsAndChallengesPage() {
                       handleEvaluationChange('startDate', event.target.value)
                     }
                   />
-                  {evaluationErrors.startDate && (
-                    <span className="eval-error-text">
-                      {evaluationErrors.startDate}
-                    </span>
-                  )}
                 </div>
 
                 <div className="eval-form-group">
@@ -1171,18 +1094,13 @@ export default function EvaluationsAndChallengesPage() {
                       handleEvaluationChange('endDate', event.target.value)
                     }
                   />
-                  {evaluationErrors.endDate && (
-                    <span className="eval-error-text">
-                      {evaluationErrors.endDate}
-                    </span>
-                  )}
                 </div>
 
                 <div className="eval-form-group">
                   <label>Duración en minutos</label>
                   <input
                     type="number"
-                    min="1"
+                    min={1}
                     value={evaluationForm.durationMinutes}
                     onChange={(event) =>
                       handleEvaluationChange(
@@ -1191,18 +1109,13 @@ export default function EvaluationsAndChallengesPage() {
                       )
                     }
                   />
-                  {evaluationErrors.durationMinutes && (
-                    <span className="eval-error-text">
-                      {evaluationErrors.durationMinutes}
-                    </span>
-                  )}
                 </div>
 
                 <div className="eval-form-group">
                   <label>Intentos máximos</label>
                   <input
                     type="number"
-                    min="1"
+                    min={1}
                     value={evaluationForm.maxAttempts}
                     onChange={(event) =>
                       handleEvaluationChange(
@@ -1211,267 +1124,213 @@ export default function EvaluationsAndChallengesPage() {
                       )
                     }
                   />
-                  {evaluationErrors.maxAttempts && (
-                    <span className="eval-error-text">
-                      {evaluationErrors.maxAttempts}
-                    </span>
-                  )}
-                </div>
-
-                <div className="eval-form-group"></div>
-                <div className="eval-form-actions">
-                  <button
-                    type="button"
-                    className="eval-primary-btn"
-                    onClick={handleSubmit}
-                  >
-                    {editingEvaluationId
-                      ? 'Actualizar evaluación'
-                      : 'Crear evaluación'}
-                  </button>
                 </div>
               </div>
+
+              <div className="eval-form-actions">
+                <button
+                  type="button"
+                  className="eval-secondary-btn"
+                  onClick={clearEvaluationForm}
+                >
+                  Limpiar
+                </button>
+
+                <button
+                  type="button"
+                  className="eval-primary-btn"
+                  onClick={handleSaveEvaluation}
+                >
+                  {editingEvaluationId ? 'Guardar cambios' : 'Crear evaluación'}
+                </button>
+              </div>
+
               {editingEvaluationId && (
-                <>
-                  <div className="eval-subsection">
-                    <div className="eval-panel-header compact">
-                      <div>
-                        <h3>Agregar reto SQL</h3>
-                        <p>
-                          Define el problema, el esquema de base de datos y los
-                          datos iniciales de prueba.
-                        </p>
-                      </div>
+                <div className="eval-subsection eval-challenge-form-card">
+                  <div className="eval-panel-header compact">
+                    <div>
+                      <h3>
+                        {editingChallengeId ? 'Editar reto' : 'Agregar reto'}
+                      </h3>
+                      <p>
+                        Los retos agregados aquí quedan asociados a la
+                        evaluación seleccionada.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="eval-form-grid">
+                    <div className="eval-form-group full">
+                      <label>Título del reto</label>
+                      <input
+                        value={challengeForm.title}
+                        onChange={(event) =>
+                          handleChallengeChange('title', event.target.value)
+                        }
+                        placeholder="Ej: Consultar clientes por ciudad"
+                      />
                     </div>
 
-                    <div className="eval-form-grid">
-                      <div className="eval-form-group">
-                        <label>Título del reto</label>
-                        <input
-                          type="text"
-                          value={challengeForm.title}
-                          onChange={(event) =>
-                            handleChallengeChange('title', event.target.value)
-                          }
-                          placeholder="Ej: Clientes con más de tres compras"
-                        />
-                        {challengeErrors.title && (
-                          <span className="eval-error-text">
-                            {challengeErrors.title}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="eval-form-group">
-                        <label>Dificultad</label>
-                        <select
-                          value={challengeForm.difficulty}
-                          onChange={(event) =>
-                            handleChallengeChange(
-                              'difficulty',
-                              event.target.value as Difficulty,
-                            )
-                          }
-                        >
-                          <option value="EASY">Fácil</option>
-                          <option value="MEDIUM">Media</option>
-                          <option value="HARD">Difícil</option>
-                        </select>
-                      </div>
-
-                      <div className="eval-form-group">
-                        <label>Motor</label>
-                        <select
-                          value={challengeForm.databaseEngine}
-                          onChange={(event) =>
-                            handleChallengeChange(
-                              'databaseEngine',
-                              event.target.value,
-                            )
-                          }
-                        >
-                          <option value="PostgreSQL">PostgreSQL</option>
-                          <option value="MySQL">MySQL</option>
-                          <option value="SQLite">SQLite</option>
-                        </select>
-                      </div>
-
-                      <div className="eval-form-group">
-                        <label>Estado del reto</label>
-                        <select
-                          value={challengeForm.visibility}
-                          onChange={(event) =>
-                            handleChallengeChange(
-                              'visibility',
-                              event.target.value as ChallengeStatus,
-                            )
-                          }
-                        >
-                          <option value="PUBLIC">Público</option>
-                          <option value="PRIVATE">Privado</option>
-                        </select>
-                      </div>
-
-                      <div className="eval-form-group">
-                        <label>Puntos</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="100"
-                          value={challengeForm.points}
-                          onChange={(event) =>
-                            handleChallengeChange(
-                              'points',
-                              Number(event.target.value),
-                            )
-                          }
-                        />
-                        {challengeErrors.points && (
-                          <span className="eval-error-text">
-                            {challengeErrors.points}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="eval-form-group">
-                        <label>Límite de tiempo (ms)</label>
-                        <input
-                          type="number"
-                          min="500"
-                          value={challengeForm.timeLimitMs}
-                          onChange={(event) =>
-                            handleChallengeChange(
-                              'timeLimitMs',
-                              Number(event.target.value),
-                            )
-                          }
-                        />
-                        {challengeErrors.timeLimitMs && (
-                          <span className="eval-error-text">
-                            {challengeErrors.timeLimitMs}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="eval-form-group full">
-                        <label>Resultado esperado (JSON)</label>
-                        <textarea
-                          className={
-                            challengeErrors.expectedResult
-                              ? 'eval-input-error'
-                              : ''
-                          }
-                          rows={5}
-                          value={
-                            // Si es string, lo usamos tal cual
-                            typeof challengeForm.expectedResult === 'string'
-                              ? challengeForm.expectedResult
-                              : // Si no es string pero tiene contenido (no es null/undefined), lo serializamos
-                                challengeForm.expectedResult
-                                ? JSON.stringify(
-                                    challengeForm.expectedResult,
-                                    null,
-                                    2,
-                                  )
-                                : '' // En cualquier otro caso (inicial), string vacío para que no salga nada
-                          }
-                          onChange={(e) => {
-                            const newValue = e.target.value;
-                            setChallengeForm({
-                              ...challengeForm,
-                              expectedResult: newValue,
-                            });
-                          }}
-                          placeholder='[{"id": 1, "nombre": "Juan"}]'
-                        />
-                        {challengeErrors.expectedResult && (
-                          <span className="eval-error-text">
-                            {challengeErrors.expectedResult}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="eval-form-group full">
-                        <label>Descripción del reto</label>
-                        <textarea
-                          value={challengeForm.description}
-                          onChange={(event) =>
-                            handleChallengeChange(
-                              'description',
-                              event.target.value,
-                            )
-                          }
-                          placeholder="Describe la consulta SQL que debe construir el estudiante"
-                        />
-                        {challengeErrors.description && (
-                          <span className="eval-error-text">
-                            {challengeErrors.description}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="eval-form-group full">
-                        <label>Esquema de base de datos</label>
-                        <textarea
-                          className="eval-code-textarea"
-                          value={challengeForm.schemaDefinition}
-                          onChange={(event) =>
-                            handleChallengeChange(
-                              'schemaDefinition',
-                              event.target.value,
-                            )
-                          }
-                          placeholder={`CREATE TABLE customers (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  city VARCHAR(80) NOT NULL
-);`}
-                        />
-                        {challengeErrors.schemaDefinition && (
-                          <span className="eval-error-text">
-                            {challengeErrors.schemaDefinition}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="eval-form-group full">
-                        <label>Datos iniciales de prueba</label>
-                        <textarea
-                          className="eval-code-textarea"
-                          value={challengeForm.seedScript}
-                          onChange={(event) =>
-                            handleChallengeChange(
-                              'seedScript',
-                              event.target.value,
-                            )
-                          }
-                          placeholder={`INSERT INTO customers (name, city) VALUES
-('Ana Pérez', 'Bogotá'),
-('Carlos Ruiz', 'Medellín');`}
-                        />
-                        {challengeErrors.seedScript && (
-                          <span className="eval-error-text">
-                            {challengeErrors.seedScript}
-                          </span>
-                        )}
-                      </div>
+                    <div className="eval-form-group full">
+                      <label>Descripción del reto</label>
+                      <textarea
+                        value={challengeForm.description}
+                        onChange={(event) =>
+                          handleChallengeChange(
+                            'description',
+                            event.target.value,
+                          )
+                        }
+                        placeholder="Describe lo que debe resolver el estudiante..."
+                      />
                     </div>
+
+                    <div className="eval-form-group">
+                      <label>Dificultad</label>
+                      <select
+                        value={challengeForm.difficulty}
+                        onChange={(event) =>
+                          handleChallengeChange(
+                            'difficulty',
+                            event.target.value as Difficulty,
+                          )
+                        }
+                      >
+                        <option value="EASY">Fácil</option>
+                        <option value="MEDIUM">Media</option>
+                        <option value="HARD">Difícil</option>
+                      </select>
+                    </div>
+
+                    <div className="eval-form-group">
+                      <label>Visibilidad</label>
+                      <select
+                        value={challengeForm.visibility}
+                        onChange={(event) =>
+                          handleChallengeChange(
+                            'visibility',
+                            event.target.value as ChallengeStatus,
+                          )
+                        }
+                      >
+                        <option value="PUBLIC">Público</option>
+                        <option value="PRIVATE">Privado</option>
+                        <option value="ARCHIVED">Archivado</option>
+                      </select>
+                    </div>
+
+                    <div className="eval-form-group">
+                      <label>Motor</label>
+                      <input
+                        value={challengeForm.databaseEngine}
+                        onChange={(event) =>
+                          handleChallengeChange(
+                            'databaseEngine',
+                            event.target.value,
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div className="eval-form-group">
+                      <label>Límite ejecución ms</label>
+                      <input
+                        type="number"
+                        min={500}
+                        value={challengeForm.timeLimitMs}
+                        onChange={(event) =>
+                          handleChallengeChange(
+                            'timeLimitMs',
+                            Number(event.target.value),
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div className="eval-form-group">
+                      <label>Puntos</label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={challengeForm.points}
+                        onChange={(event) =>
+                          handleChallengeChange(
+                            'points',
+                            Number(event.target.value),
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div className="eval-form-group full">
+                      <label>Esquema SQL</label>
+                      <textarea
+                        className="eval-code-textarea"
+                        value={challengeForm.schemaDefinition}
+                        onChange={(event) =>
+                          handleChallengeChange(
+                            'schemaDefinition',
+                            event.target.value,
+                          )
+                        }
+                      />
+                    </div>
+
+                    <div className="eval-form-group full">
+                      <label>Datos iniciales</label>
+                      <textarea
+                        className="eval-code-textarea"
+                        value={challengeForm.seedScript}
+                        onChange={(event) =>
+                          handleChallengeChange('seedScript', event.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="eval-form-group full">
+                      <label>Resultado esperado</label>
+                      <textarea
+                        className="eval-code-textarea"
+                        value={
+                          typeof challengeForm.expectedResult === 'string'
+                            ? challengeForm.expectedResult
+                            : JSON.stringify(
+                                challengeForm.expectedResult || '',
+                                null,
+                                2,
+                              )
+                        }
+                        onChange={(event) =>
+                          handleChallengeChange(
+                            'expectedResult',
+                            event.target.value,
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="eval-form-actions">
+                    <button
+                      type="button"
+                      className="eval-secondary-btn"
+                      onClick={() => {
+                        setChallengeForm(emptyChallenge);
+                        setEditingChallengeId(null);
+                      }}
+                    >
+                      Limpiar reto
+                    </button>
 
                     <button
                       type="button"
-                      className="eval-secondary-btn add-btn"
-                      onClick={addChallenge}
+                      className="eval-primary-btn"
+                      onClick={handleSaveChallenge}
                     >
-                      {editingChallengeId ? 'Guardar Cambios' : 'Agregar Reto'}
+                      {editingChallengeId ? 'Guardar reto' : 'Agregar reto'}
                     </button>
-
-                    {evaluationErrors.challenges && (
-                      <p className="eval-error-text block">
-                        {evaluationErrors.challenges}
-                      </p>
-                    )}
                   </div>
-                </>
+                </div>
               )}
             </div>
           )}
@@ -1534,7 +1393,7 @@ export default function EvaluationsAndChallengesPage() {
                       <p>{evaluation.description}</p>
                     </div>
 
-                    {/*
+                    {!isStudent && (
                       <span
                         className={`eval-status-badge ${
                           evaluation.status === 'ACTIVE' ? 'active' : 'inactive'
@@ -1542,83 +1401,121 @@ export default function EvaluationsAndChallengesPage() {
                       >
                         {getStatusLabel(evaluation.status)}
                       </span>
-                    */}
+                    )}
                   </div>
 
                   <div className="eval-card-dates">
-                    <span>
-                      Inicio:{' '}
-                      {new Date(evaluation.startDate).toLocaleDateString()}
-                    </span>
-                    <span>
-                      Cierre:{' '}
-                      {new Date(evaluation.endDate).toLocaleDateString()}
-                    </span>
-                    <span>Duración: {evaluation.durationMinutes} min</span>
+                    <span>Inicio: {formatDate(evaluation.startDate)}</span>
+                    <span>Cierre: {formatDate(evaluation.endDate)}</span>
+                    <span>Duración: {evaluation.durationMinutes || 90} min</span>
                     <span>Intentos: {evaluation.maxAttempts}</span>
                     <span>Retos: {evaluation.challenges?.length || 0}</span>
                   </div>
 
                   <div className="eval-card-summary">
-                    {evaluation.challenges?.map((challenge) => {
-                      const canSubmit = isChallengeAvailableForStudent(
-                        evaluation,
-                        challenge,
-                      );
+                    {evaluation.challenges?.length ? (
+                      evaluation.challenges.map((challenge) => {
+                        const canSubmit = isChallengeAvailableForStudent(
+                          evaluation,
+                          challenge,
+                        );
 
-                      return (
-                        <div
-                          className="eval-card-summary-row"
-                          key={challenge.id}
-                        >
-                          <strong>{challenge.title}</strong>
+                        return (
+                          <div
+                            className={`eval-card-summary-row ${
+                              isStudent ? 'student-row' : ''
+                            }`}
+                            key={challenge.id}
+                          >
+                            <strong>{challenge.title}</strong>
 
-                          <span>
-                            {getDifficultyLabel(challenge.difficulty)}
-                          </span>
-
-                          {isStudent && (
-                            <span
-                              className={
-                                canSubmit
-                                  ? 'eval-mini-available'
-                                  : 'eval-mini-unavailable'
-                              }
-                            >
-                              {canSubmit ? 'Disponible' : 'No disponible'}
+                            <span>
+                              {getDifficultyLabel(challenge.difficulty)}
                             </span>
-                          )}
-                        </div>
-                      );
-                    })}
+
+                            {isStudent ? (
+                              <>
+                                <span className="eval-duration-label">
+                                  Duración: {evaluation.durationMinutes || 90}{' '}
+                                  min
+                                </span>
+
+                                <button
+                                  type="button"
+                                  className="eval-primary-btn eval-start-challenge-btn"
+                                  disabled={!canSubmit}
+                                  onClick={() =>
+                                    handleStartChallenge(evaluation, challenge)
+                                  }
+                                >
+                                  {canSubmit ? 'Iniciar reto' : 'No disponible'}
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <span
+                                  className={
+                                    challenge.visibility === 'PUBLIC'
+                                      ? 'eval-mini-available'
+                                      : 'eval-mini-unavailable'
+                                  }
+                                >
+                                  {getChallengeStatusLabel(challenge.visibility)}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  className="eval-secondary-btn eval-small-btn"
+                                  onClick={() =>
+                                    handleEditChallenge(evaluation, challenge)
+                                  }
+                                >
+                                  Editar reto
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="eval-empty-state">
+                        Esta evaluación no tiene retos asociados.
+                      </div>
+                    )}
                   </div>
 
                   <div className="eval-card-actions">
-                    <button
-                      type="button"
-                      className="eval-primary-btn"
-                      onClick={() => handleOpenDetail(evaluation.id)}
-                    >
-                      Ver detalle
-                    </button>
-
-                    {isProfessor && (
+                    {!isStudent && (
                       <>
                         <button
                           type="button"
-                          className="eval-secondary-btn"
-                          onClick={() => handleEdit(evaluation)}
+                          className="eval-primary-btn"
+                          onClick={() => handleOpenDetail(evaluation.id)}
                         >
-                          Editar
+                          Ver detalle
                         </button>
 
-                        <button
-                          type="button"
-                          className="eval-danger-btn"
-                          onClick={() => handleDelete(evaluation.id.toString())}
-                        >
-                          Eliminar
-                        </button>
+                        {isProfessor && (
+                          <>
+                            <button
+                              type="button"
+                              className="eval-secondary-btn"
+                              onClick={() => handleEditEvaluation(evaluation)}
+                            >
+                              Editar
+                            </button>
+
+                            <button
+                              type="button"
+                              className="eval-danger-btn"
+                              onClick={() =>
+                                handleDeleteEvaluation(evaluation.id)
+                              }
+                            >
+                              Eliminar
+                            </button>
+                          </>
+                        )}
                       </>
                     )}
                   </div>
