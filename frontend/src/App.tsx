@@ -5,6 +5,8 @@ import { DashboardPage } from './features/dashboard/presentation/pages/Dashboard
 import { CoursesPage } from './features/courses/presentation/pages/CoursesPage';
 import EvaluationsAndChallengesPage from './features/evaluationsAndChallenges/presentation/pages/EvaluationsAndChallengesPage';
 import { ResultsPage } from './features/results/presentation/pages/ResultsPage';
+import ReportsPage from './features/reports/presentation/pages/ReportsPage';
+import ManagementPage from './features/managemen/presentation/pages/ManagemenPage';
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
       <Route path="/results" element={<ResultsPage />} />
       <Route path="/courses" element={<CoursesPage />} />
       <Route path="/evaluation" element={<ResultsPage />} />
+       <Route path="/reports" element={<ReportsPage />} />
+       <Route path="/managemen" element={<ManagementPage />} />
 
       <Route
         path="/courses/evaluations-challenges/:courseId"
