@@ -63,7 +63,10 @@ export class AiService implements IAiProvider {
     }
   }
 
-  async generateRandomData(schema: string, prompt: string): Promise<string> {
+  async generateRandomData(
+    schema: string,
+    prompt: string,
+  ): Promise<{ result: string }> {
     const apiHeaders = {
       Authorization: `Bearer ${process.env.AI_API_KEY}`,
       'Content-Type': 'application/json',
@@ -100,7 +103,7 @@ export class AiService implements IAiProvider {
       });
 
       if (response.data?.choices?.length > 0) {
-        return response.data.choices[0].message.content;
+        return { result: response.data.choices[0].message.content };
       }
 
       throw new Error('La API respondió sin contenido');
@@ -112,7 +115,7 @@ export class AiService implements IAiProvider {
     }
   }
 
-  async generateChallenge(prompt: string): Promise<string> {
+  async generateChallenge(prompt: string): Promise<{ result: string }> {
     const apiHeaders = {
       Authorization: `Bearer ${process.env.AI_API_KEY}`,
       'Content-Type': 'application/json',
@@ -149,7 +152,7 @@ export class AiService implements IAiProvider {
       });
 
       if (response.data?.choices?.length > 0) {
-        return response.data.choices[0].message.content;
+        return { result: response.data.choices[0].message.content };
       }
 
       throw new Error('La API respondió sin contenido');
