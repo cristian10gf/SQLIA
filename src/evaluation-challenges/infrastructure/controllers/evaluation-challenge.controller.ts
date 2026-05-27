@@ -39,7 +39,7 @@ export class EvaluationChallengeController {
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Asociar un reto a una evaluacion' })
   async create(@Body() dto: CreateEvaluationChallengeDto) {
     const evaluationChallenge = await this.createEvaluationChallengeUseCase.execute(dto);
@@ -53,7 +53,7 @@ export class EvaluationChallengeController {
   @Get('evaluation/:evaluationId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Listar retos de una evaluacion para profesor con filtro de visibilidad' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
@@ -81,7 +81,7 @@ export class EvaluationChallengeController {
   @Patch(':evaluationId/:challengeId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Editar la asociacion de un reto en una evaluacion' })
   async update(
     @Param('evaluationId', ParseUUIDPipe) evaluationId: string,
@@ -103,7 +103,7 @@ export class EvaluationChallengeController {
   @Delete(':evaluationId/:challengeId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Desasociar un reto de una evaluacion' })
   async remove(
     @Param('evaluationId', ParseUUIDPipe) evaluationId: string,

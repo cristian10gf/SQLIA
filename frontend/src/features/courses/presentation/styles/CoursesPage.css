@@ -214,7 +214,8 @@
   font-weight: 800;
 }
 
-.course-form-group input {
+.course-form-group input,
+.course-form-group select {
   width: 100%;
   padding: 13px 16px;
   border: 1px solid #dbe3ef;
@@ -223,6 +224,13 @@
   background: #ffffff;
   font-size: 15px;
   outline: none;
+  box-sizing: border-box;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+  cursor: pointer;
 }
 
 .course-form-group input:disabled {
@@ -231,7 +239,8 @@
   color: #64748b;
 }
 
-.course-form-group input:focus {
+.course-form-group input:focus,
+.course-form-group select:focus {
   border-color: #2563eb;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
@@ -301,6 +310,96 @@
 
 .course-import-file-name strong {
   color: #0f172a;
+}
+
+.course-import-hint {
+  margin: 14px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.course-import-hint strong {
+  color: #0f172a;
+}
+
+.course-import-result-card {
+  padding: 24px;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+}
+
+.course-import-result-header {
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.course-import-result-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.course-import-result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.course-import-result-grid div {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.course-import-result-grid span {
+  display: block;
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.course-import-result-grid strong {
+  display: block;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.course-import-result-list {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.course-import-result-list span {
+  display: block;
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.course-import-result-list p {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .course-detail-grid {
@@ -462,6 +561,94 @@
   font-weight: 600;
 }
 
+.course-students-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.course-students-status {
+  margin: 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.course-students-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.course-student-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.course-student-row strong {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-student-row p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.course-students-pagination {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.course-students-pagination p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.course-students-pagination button {
+  padding: 9px 14px;
+  border: none;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.course-students-pagination button:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.course-students-pagination button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 @media (max-width: 1100px) {
   .courses-list {
     grid-template-columns: 1fr;
@@ -486,7 +673,8 @@
   .courses-summary-grid,
   .course-form-grid,
   .course-detail-grid,
-  .course-meta-grid {
+  .course-meta-grid,
+  .course-import-result-grid {
     grid-template-columns: 1fr;
   }
 

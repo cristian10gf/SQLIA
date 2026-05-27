@@ -6,15 +6,21 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
   BadRequestException,
   ForbiddenException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiQuery,
   ApiResponse,
@@ -28,6 +34,7 @@ import { ListUsersUseCase } from '../../application/use-cases/list-users.use-cas
 import { GetUserByIdForAdminUseCase } from '../../application/use-cases/get-user-by-id-for-admin.use-case';
 import { UpdateUserUseCase } from '../../application/use-cases/update-user.use-case';
 import { DeleteUserUseCase } from '../../application/use-cases/delete-user.use-case';
+import { ImportStudentsFromCsvUseCase } from '../../application/use-cases/import-students-from-csv.use-case';
 import { UpdateUserDto } from '../../application/dtos/update-user.dto';
 import { AdminPaginationDto } from '../../application/dtos/admin-pagination.dto';
 import { UserResponseDto } from '../../application/dtos/user-response.dto';
@@ -48,7 +55,56 @@ export class AdminUsersController {
     private readonly getUserByIdForAdminUseCase: GetUserByIdForAdminUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
     private readonly deleteUserUseCase: DeleteUserUseCase,
+    private readonly importStudentsFromCsvUseCase: ImportStudentsFromCsvUseCase,
   ) {}
+
+  @Post('import-csv')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Importar estudiantes desde CSV Brightspace (solo admin)',
+    description:
+      'Sube un CSV Brightspace. Por cada fila se crea un usuario STUDENT cuya contraseña es su propio correo electrónico. Los usuarios ya existentes se omiten.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Resumen de la importación',
+    schema: {
+      properties: {
+        message: { type: 'string' },
+        data: {
+          properties: {
+            total: { type: 'number' },
+            created: { type: 'number' },
+            alreadyExisted: { type: 'number' },
+            errors: { type: 'array', items: { type: 'string' } },
+          },
+        },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async importStudentsFromCsv(
+    @UploadedFile() file: { buffer: Buffer } | undefined,
+  ) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('Debe enviar un archivo CSV en el campo "file"');
+    }
+    const csvContent = file.buffer.toString('utf-8');
+    const result = await this.importStudentsFromCsvUseCase.execute(csvContent);
+    return {
+      message: 'Importación de estudiantes procesada',
+      data: result,
+    };
+  }
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)

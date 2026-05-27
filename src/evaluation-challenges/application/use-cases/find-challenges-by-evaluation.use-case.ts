@@ -15,7 +15,11 @@ export class FindChallengesByEvaluationUseCase {
     const skip = (page - 1) * limit;
 
     const visibilityFilter =
-      visibility === 'visible' ? true : visibility === 'invisible' ? false : undefined;
+      visibility === 'visible'
+        ? true
+        : visibility === 'invisible'
+          ? false
+          : undefined;
 
     return await this.evaluationChallengeRepository.findByEvaluation(
       evaluationId,

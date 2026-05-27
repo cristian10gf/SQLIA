@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type {
@@ -1844,3 +1845,4 @@ export default function EvaluationsAndChallengesPage() {
     </DashboardLayout>
   );
 }
+export { default } from './EvaluationsListPage';
