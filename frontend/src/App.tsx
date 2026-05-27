@@ -3,6 +3,7 @@ import { LoginPage } from './features/auth/presentation/pages/LoginPage';
 import { RegisterPage } from './features/auth/presentation/pages/RegisterPage';
 import { DashboardPage } from './features/dashboard/presentation/pages/DashboardPage';
 import { CoursesPage } from './features/courses/presentation/pages/CoursesPage';
+import ProfessorEvaluationsPage from './features/evaluationsAndChallenges/presentation/pages/ProfessorEvaluationsPage';
 import EvaluationsListPage from './features/evaluationsAndChallenges/presentation/pages/EvaluationsListPage';
 import EvaluationDetailPage from './features/evaluationsAndChallenges/presentation/pages/EvaluationDetailPage';
 import { ResultsPage } from './features/results/presentation/pages/ResultsPage';
@@ -20,6 +21,11 @@ function App() {
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/results" element={<ResultsPage />} />
       <Route path="/courses" element={<CoursesPage />} />
+      <Route path="/evaluation" element={<ProfessorEvaluationsPage />} />
+      <Route path="/evaluation/:courseId" element={<ProfessorEvaluationsPage />} />
+      <Route
+        path="/courses/evaluations-challenges/:courseId"
+        element={<ProfessorEvaluationsPage />}
       <Route path="/evaluation" element={<ResultsPage />} />
       <Route path="/reports" element={<ReportsPage />} />
       <Route path="/managemen" element={<ManagementPage />} />
@@ -33,6 +39,8 @@ function App() {
         path="/courses/evaluations-challenges/:courseId/evaluation/:evaluationId"
         element={<EvaluationDetailPage />}
       />
+      <Route path="/reports" element={<ReportsPage />} />
+      <Route path="/managemen" element={<ManagementPage />} />
 
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
