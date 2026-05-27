@@ -7,7 +7,7 @@ import ProfessorEvaluationsPage from './features/evaluationsAndChallenges/presen
 import EvaluationsListPage from './features/evaluationsAndChallenges/presentation/pages/EvaluationsListPage';
 import EvaluationDetailPage from './features/evaluationsAndChallenges/presentation/pages/EvaluationDetailPage';
 import { ResultsPage } from './features/results/presentation/pages/ResultsPage';
-import ReportsPage from './features/reports/presentation/pages/ReportsPage';
+import ReportsPage from './features/reports/presentation/pages/ReportsPage.ts';
 import ManagementPage from './features/managemen/presentation/pages/ManagemenPage';
 
 function App() {
