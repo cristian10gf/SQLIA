@@ -34,6 +34,7 @@ export interface Evaluation {
   status: EvaluationStatus;
   durationMinutes: number;
   maxAttempts: number;
+  isVisible: boolean;
   courseName: string;
   challenges: Challenge[];
 }
