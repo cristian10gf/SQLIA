@@ -9,6 +9,7 @@ import {
   CreateSubmissionData,
   ISubmissionRepository,
   LeaderboardEntry,
+  SubmissionWithStudent,
 } from '../../domain/repositories/submission.repository.interface';
 import { SubmissionMapper } from '../mappers/submission.mapper';
 
@@ -95,6 +96,31 @@ export class PrismaSubmissionRepository implements ISubmissionRepository {
     return this.prisma.submission.count({
       where: { studentId, evaluationId },
     });
+  }
+
+  async findByEvaluationAndChallenge(
+    evaluationId: string,
+    challengeId: string,
+  ): Promise<SubmissionWithStudent[]> {
+    const rows = await this.prisma.submission.findMany({
+      where: { evaluationId, challengeId },
+      include: { student: { select: { id: true, fullName: true, email: true } } },
+      orderBy: [{ score: 'desc' }, { createdAt: 'asc' }],
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      studentId: r.studentId,
+      studentName: r.student.fullName,
+      studentEmail: r.student.email,
+      challengeId: r.challengeId,
+      evaluationId: r.evaluationId,
+      query: r.query,
+      status: r.status as SubmissionStatusValue,
+      score: Number(r.score ?? 0),
+      executionTimeMs: r.executionTimeMs,
+      resultJson: r.resultJson as Record<string, any> | null,
+      createdAt: r.createdAt,
+    }));
   }
 
   async getLeaderboard(evaluationId: string): Promise<LeaderboardEntry[]> {

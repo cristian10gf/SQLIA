@@ -22,6 +22,21 @@ export interface CreateSubmissionData {
   query: string;
 }
 
+export interface SubmissionWithStudent {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  challengeId: string;
+  evaluationId: string | null;
+  query: string;
+  status: SubmissionStatusValue;
+  score: number;
+  executionTimeMs: number | null;
+  resultJson: Record<string, any> | null;
+  createdAt: Date;
+}
+
 export interface ISubmissionRepository {
   create(data: CreateSubmissionData): Promise<Submission>;
   findById(id: string): Promise<Submission | null>;
@@ -42,4 +57,5 @@ export interface ISubmissionRepository {
   claimForProcessing(id: string): Promise<boolean>;
   countByStudentAndEvaluation(studentId: string, evaluationId: string): Promise<number>;
   getLeaderboard(evaluationId: string): Promise<LeaderboardEntry[]>;
+  findByEvaluationAndChallenge(evaluationId: string, challengeId: string): Promise<SubmissionWithStudent[]>;
 }

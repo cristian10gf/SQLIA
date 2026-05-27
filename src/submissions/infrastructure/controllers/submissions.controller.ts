@@ -20,6 +20,7 @@ import { CreateSubmissionUseCase } from '../../application/use-cases/create-subm
 import { GetSubmissionByIdUseCase } from '../../application/use-cases/get-submission-by-id.use-case';
 import { GetMySubmissionCountUseCase } from '../../application/use-cases/get-my-submission-count.use-case';
 import { GetEvaluationLeaderboardUseCase } from '../../application/use-cases/get-evaluation-leaderboard.use-case';
+import { GetSubmissionsByEvaluationUseCase } from '../../application/use-cases/get-submissions-by-evaluation.use-case';
 
 @ApiTags('Submissions')
 @Controller('submissions')
@@ -29,6 +30,7 @@ export class SubmissionsController {
     private readonly getSubmissionByIdUseCase: GetSubmissionByIdUseCase,
     private readonly getMySubmissionCountUseCase: GetMySubmissionCountUseCase,
     private readonly getEvaluationLeaderboardUseCase: GetEvaluationLeaderboardUseCase,
+    private readonly getSubmissionsByEvaluationUseCase: GetSubmissionsByEvaluationUseCase,
   ) {}
 
   @Post()
@@ -50,6 +52,18 @@ export class SubmissionsController {
     @CurrentUser() user: User,
   ) {
     return this.getMySubmissionCountUseCase.execute(String(user.id), evaluationId);
+  }
+
+  @Get('by-evaluation/:evaluationId')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
+  @ApiOperation({ summary: 'Listar entregas de un reto en una evaluación' })
+  async byEvaluation(
+    @Param('evaluationId', ParseUUIDPipe) evaluationId: string,
+    @Query('challengeId') challengeId: string,
+  ) {
+    return this.getSubmissionsByEvaluationUseCase.execute(evaluationId, challengeId);
   }
 
   @Get('leaderboard/:evaluationId')
