@@ -9,6 +9,7 @@ import { evaluationChallengeApi } from '../../infrastructure/evaluationChallenge
 import { emptyChallenge } from '../utils/evaluationUtils';
 import '../styles/EvaluationsAndChallengesPage.css';
 import { GenerateChallengeModal } from './GenerateChallengeModal';
+import { GenerateDataModal } from './GenerateDataModal';
 
 interface ChallengeModalProps {
   challenge?: Challenge | null;
@@ -58,6 +59,7 @@ export function ChallengeModal({
   const [invalidField, setInvalidField] = useState<InvalidField>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showGenerateChallenge, setShowGenerateChallenge] = useState(false);
+  const [showGenerateData, setShowGenerateData] = useState(false);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -164,6 +166,17 @@ export function ChallengeModal({
 
   const toggleAiSuggestionBox = () => {
     setShowGenerateChallenge(!showGenerateChallenge);
+  };
+
+  const toggleAiSeedBox = () => {
+    if (!form.schemaDefinition || !form.schemaDefinition.trim()) {
+      setError(
+        'No puedes usar el asistente de IA si el "Esquema de la base de datos" está vacío. Diseña o escribe las tablas primero.',
+      );
+      setInvalidField('schemaDefinition');
+      return;
+    }
+    setShowGenerateData(!showGenerateData);
   };
 
   const fieldClass = (field: keyof ChallengeFormData) =>
@@ -337,9 +350,24 @@ export function ChallengeModal({
               onChange={(e) => handleChange('schemaDefinition', e.target.value)}
             />
           </div>
+          {invalidField === 'schemaDefinition' && (
+            <span className="eval-error-text">
+              {error || 'El esquema de la base de datos es obligatorio.'}
+            </span>
+          )}
 
           <div className="eval-form-group full">
-            <label>Datos iniciales</label>
+            <div className="flex-row">
+              <label>Datos iniciales</label>
+              <button
+                type="button"
+                className="eval-ai-btn"
+                style={{ padding: '4px 12px', fontSize: '0.85rem' }}
+                onClick={toggleAiSeedBox}
+              >
+                Generar con IA
+              </button>
+            </div>
             <textarea
               className="eval-code-textarea"
               value={form.seedScript}
@@ -399,6 +427,15 @@ export function ChallengeModal({
           setShowGenerateChallenge={setShowGenerateChallenge}
           token={token}
         ></GenerateChallengeModal>
+      )}
+
+      {showGenerateData && (
+        <GenerateDataModal
+          schema={form.schemaDefinition}
+          setForm={setForm}
+          setShowGenerateData={setShowGenerateData}
+          token={token}
+        ></GenerateDataModal>
       )}
     </div>
   );
