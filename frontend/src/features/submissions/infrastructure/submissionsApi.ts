@@ -1,9 +1,12 @@
 import { apiClient } from '../../../shared/infrastructure/http/apiClient';
-import type { Submission } from '../domain/submissions.types';
+import type { Submission, SubmissionResult } from '../domain/submissions.types';
 
 export const submissionsApi = {
   send(submission: Submission, token: string) {
-    console.log(submission, token);
     return apiClient.post('/submissions', submission, token);
+  },
+
+  getById(id: string, token: string): Promise<SubmissionResult> {
+    return apiClient.get<SubmissionResult>(`/submissions/${id}`, token);
   },
 };
