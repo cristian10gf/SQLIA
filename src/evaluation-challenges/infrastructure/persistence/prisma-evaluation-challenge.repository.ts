@@ -76,7 +76,14 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
     ]);
 
     return {
-      data: models.map((model) => ChallengeMapper.toDomain(model.challenge)),
+      data: models.map((model) => {
+        const domainChallenge = ChallengeMapper.toDomain(model.challenge);
+        return {
+          ...domainChallenge,
+          points: model.points,
+          orderIndex: model.orderIndex,
+        };
+      }) as unknown as Challenge[],
       total,
     };
   }
