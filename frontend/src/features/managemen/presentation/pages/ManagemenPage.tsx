@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authStorage } from '../../../auth/infrastructure/authStorage';
 import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 import type { DashboardRole } from '../../../../shared/layouts/DashboardLayout';
 import { PasswordVisibilityIcon } from '../../../../shared/components/PasswordVisibilityIcon';
 import { userApi } from '../../infrastructure/userApi';
-import type { ApiUser, UserRole } from '../../infrastructure/userApi';
+import type { ApiUser, ApiUserDetail, ImportCsvResult, UserRole } from '../../infrastructure/userApi';
 import '../styles/ManagemenPage.css';
 
 type ManagedUser = {
@@ -66,6 +66,7 @@ function validateInstitutionalEmail(email: string) {
 
 export function ManagementPage() {
   const navigate = useNavigate();
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   const [session] = useState(() => ({
     token: authStorage.getToken(),
@@ -93,6 +94,15 @@ export function ManagementPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Detail modal
+  const [detailUser, setDetailUser] = useState<ApiUserDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+
+  // CSV import
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportCsvResult | null>(null);
 
   useEffect(() => {
     if (!token || !user) {
@@ -272,6 +282,42 @@ export function ManagementPage() {
     }
   };
 
+  const handleRowClick = async (item: ManagedUser) => {
+    setDetailUser(null);
+    setDetailError('');
+    setDetailLoading(true);
+    try {
+      const res = await userApi.findById(item.id, token!);
+      const detail: ApiUserDetail = (res as any)?.data ?? res;
+      setDetailUser(detail);
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : 'No se pudo cargar el detalle.');
+      setDetailUser({ id: item.id, email: item.institutionalEmail, fullName: item.fullName, role: item.role, createdAt: item.createdAt });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleCsvFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImporting(true);
+    setImportResult(null);
+    setApiError('');
+    try {
+      const res: any = await userApi.importCsv(file, token!);
+      const result: ImportCsvResult = res?.data ?? res;
+      setImportResult(result);
+      setActionMessage(`Importación completada: ${result.created} creados, ${result.alreadyExisted} ya existían.`);
+      await loadUsers();
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Error al importar el CSV.');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const handleLogout = () => {
     authStorage.clearSession();
     navigate('/login', { replace: true });
@@ -315,6 +361,20 @@ export function ManagementPage() {
           <div className="management-error-banner">{apiError}</div>
         )}
 
+        {importResult && (
+          <div className="management-import-result">
+            <strong>Resultado de importación</strong>
+            <ul>
+              <li>Total filas procesadas: <strong>{importResult.total}</strong></li>
+              <li>Usuarios creados: <strong>{importResult.created}</strong></li>
+              <li>Ya existían: <strong>{importResult.alreadyExisted}</strong></li>
+              {importResult.errors.length > 0 && (
+                <li>Errores: {importResult.errors.join(', ')}</li>
+              )}
+            </ul>
+          </div>
+        )}
+
         <article className="management-list-panel">
           <div className="management-panel-header list-header">
             <div className="management-panel-header-row">
@@ -322,13 +382,30 @@ export function ManagementPage() {
                 <span>Usuarios registrados</span>
                 <h2>Estudiantes, profesores y administradores</h2>
               </div>
-              <button
-                type="button"
-                className="management-primary-btn"
-                onClick={openCreateModal}
-              >
-                + Agregar usuario
-              </button>
+              <div className="management-header-actions">
+                <input
+                  ref={csvInputRef}
+                  type="file"
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  onChange={handleCsvFileChange}
+                />
+                <button
+                  type="button"
+                  className="management-secondary-btn"
+                  onClick={() => csvInputRef.current?.click()}
+                  disabled={importing}
+                >
+                  {importing ? 'Importando...' : '↑ Importar CSV'}
+                </button>
+                <button
+                  type="button"
+                  className="management-primary-btn"
+                  onClick={openCreateModal}
+                >
+                  + Agregar usuario
+                </button>
+              </div>
             </div>
           </div>
 
@@ -369,7 +446,11 @@ export function ManagementPage() {
                   </thead>
                   <tbody>
                     {visibleUsers.map((item) => (
-                      <tr key={item.id}>
+                      <tr
+                        key={item.id}
+                        className="management-table-row-clickable"
+                        onClick={() => handleRowClick(item)}
+                      >
                         <td>
                           <strong>{item.fullName}</strong>
                           <span>{item.id}</span>
@@ -386,14 +467,14 @@ export function ManagementPage() {
                             <button
                               type="button"
                               className="management-secondary-btn small"
-                              onClick={() => handleEdit(item)}
+                              onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
                             >
                               Editar
                             </button>
                             <button
                               type="button"
                               className="management-danger-btn small"
-                              onClick={() => handleDeleteRequest(item)}
+                              onClick={(e) => { e.stopPropagation(); handleDeleteRequest(item); }}
                             >
                               Eliminar
                             </button>
@@ -415,6 +496,106 @@ export function ManagementPage() {
         </article>
       </section>
 
+      {/* ── Detail modal ──────────────────────────────────────────────── */}
+      {(detailUser || detailLoading) && (
+        <div
+          className="management-modal-overlay"
+          onClick={(e) => { if (e.target === e.currentTarget) { setDetailUser(null); setDetailError(''); } }}
+        >
+          <div className="management-modal management-modal--detail">
+            <div className="management-modal-header">
+              <div>
+                <span>DETALLE DE USUARIO</span>
+                <h2>{detailUser?.fullName ?? '...'}</h2>
+              </div>
+              <button
+                type="button"
+                className="management-modal-close"
+                onClick={() => { setDetailUser(null); setDetailError(''); }}
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            {detailLoading && <div className="management-detail-loading">Cargando información...</div>}
+            {detailError && <div className="management-error-banner">{detailError}</div>}
+
+            {detailUser && !detailLoading && (
+              <div className="management-detail-body">
+                <div className="management-detail-grid">
+                  <div className="management-detail-field">
+                    <span className="management-detail-label">ID</span>
+                    <span className="management-detail-value management-detail-id">{detailUser.id}</span>
+                  </div>
+                  <div className="management-detail-field">
+                    <span className="management-detail-label">Correo</span>
+                    <span className="management-detail-value">{detailUser.email}</span>
+                  </div>
+                  <div className="management-detail-field">
+                    <span className="management-detail-label">Rol</span>
+                    <span className={`management-role-badge ${detailUser.role.toLowerCase()}`}>
+                      {getRoleLabel(detailUser.role)}
+                    </span>
+                  </div>
+                  <div className="management-detail-field">
+                    <span className="management-detail-label">Creado</span>
+                    <span className="management-detail-value">
+                      {detailUser.createdAt ? formatDate(detailUser.createdAt) : '—'}
+                    </span>
+                  </div>
+                </div>
+
+                {detailUser.enrollments && detailUser.enrollments.length > 0 && (
+                  <div className="management-detail-section">
+                    <h3>Cursos inscritos</h3>
+                    <ul className="management-detail-list">
+                      {detailUser.enrollments.map((e) => (
+                        <li key={e.courseId}>
+                          <span>{e.courseName ?? e.courseId}</span>
+                          {e.enrolledAt && (
+                            <span className="management-detail-sub">{formatDate(e.enrolledAt)}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="management-form-actions">
+              <button
+                type="button"
+                className="management-secondary-btn"
+                onClick={() => { setDetailUser(null); setDetailError(''); }}
+              >
+                Cerrar
+              </button>
+              {detailUser && (
+                <button
+                  type="button"
+                  className="management-primary-btn"
+                  onClick={() => {
+                    setDetailUser(null);
+                    handleEdit({
+                      id: detailUser.id,
+                      fullName: detailUser.fullName,
+                      institutionalEmail: detailUser.email,
+                      role: detailUser.role,
+                      createdAt: detailUser.createdAt ?? '',
+                    });
+                  }}
+                >
+                  Editar usuario
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create / Edit modal ───────────────────────────────────────── */}
       {showModal && (
         <div
           className="management-modal-overlay"
@@ -556,6 +737,7 @@ export function ManagementPage() {
         </div>
       )}
 
+      {/* ── Delete confirm modal ──────────────────────────────────────── */}
       {deleteTarget && (
         <div
           className="management-modal-overlay"
