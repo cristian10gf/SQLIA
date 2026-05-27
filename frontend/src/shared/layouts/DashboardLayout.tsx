@@ -18,21 +18,18 @@ type MenuItem = {
 
 const menuByRole: Record<DashboardRole, MenuItem[]> = {
   ADMIN: [
-    { label: 'Dashboard', path: '/dashboard' },
     { label: 'Gestionar usuarios', path: '/managemen' },
     { label: 'Cursos', path: '/courses' },
     { label: 'Reportes', path: '/reports' },
   ],
 
   PROFESSOR: [
-    { label: 'Dashboard', path: '/dashboard' },
     { label: 'Mis cursos', path: '/courses' },
     { label: 'Evaluaciones', path: '/evaluation' },
     { label: 'Reportes', path: '/reports' },
   ],
 
   STUDENT: [
-    { label: 'Dashboard', path: '/dashboard' },
     { label: 'Mis cursos', path: '/courses' },
     { label: 'Mis resultados', path: '/results' }
   ],

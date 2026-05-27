@@ -135,7 +135,16 @@ export function RegisterPage() {
       setSuccessMessage(
         `Cuenta creada correctamente. Bienvenido, ${response.user.fullName}.`,
       );
-      navigate('/dashboard');
+
+      const role = response.user.role;
+
+      const redirectByRole: Record<string, string> = {
+        ADMIN: '/managemen',
+        PROFESSOR: '/courses',
+        STUDENT: '/courses',
+      };
+
+      navigate(redirectByRole[role] ?? '/courses');
     } catch (error) {
       setErrors({
         general:
