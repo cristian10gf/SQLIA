@@ -4,8 +4,15 @@ export type EvaluationStatus = 'ACTIVE' | 'INACTIVE';
 
 export type ChallengeStatus = 'PUBLIC' | 'PRIVATE';
 
+export type SandboxStatusValue =
+  | 'PENDING'
+  | 'PROVISIONING'
+  | 'READY'
+  | 'ERROR'
+  | 'EXPIRED';
+
 export interface Challenge {
-  id: number;
+  id: number | string;
   title: string;
   description: string;
   difficulty: Difficulty;
@@ -19,7 +26,7 @@ export interface Challenge {
 }
 
 export interface Evaluation {
-  id: number;
+  id: number | string;
   title: string;
   description: string;
   startDate: string;
@@ -42,6 +49,22 @@ export interface ChallengeFormErrors {
   seedScript?: string;
   expectedResult?: string;
   timeLimitMs?: string;
+}
+
+export interface VisibleChallenge {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: Difficulty;
+  databaseEngine: string;
+  visibility: ChallengeStatus;
+  schemaDefinition: string;
+  seedScript: string;
+  timeLimitMs: number;
+  status: string;
+  tags: string[];
+  courseId: string;
+  createdAt: string;
 }
 
 export interface EvaluationFormErrors {
