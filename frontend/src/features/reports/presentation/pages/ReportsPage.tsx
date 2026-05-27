@@ -3,418 +3,46 @@ import { useNavigate } from 'react-router-dom';
 import { authStorage } from '../../../auth/infrastructure/authStorage';
 import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 import type { DashboardRole } from '../../../../shared/layouts/DashboardLayout';
+import { courseApi } from '../../../courses/infrastructure/courseApi';
+import type { Course, CourseListResponse } from '../../../courses/domain/course.types';
+import { enrollmentApi } from '../../../courses/infrastructure/enrollmentApi';
+import type { StudentInCourse, StudentsPageResponse } from '../../../courses/domain/enrollment.types';
+import { reportsApi } from '../../infrastructure/reportsApi';
+import type { StudentSubmissionSummary } from '../../infrastructure/reportsApi';
 import '../styles/ReportsPage.css';
 
-type SubmissionStatus = 'ACCEPTED' | 'WRONG_ANSWER' | 'RUNTIME_ERROR';
-
-type SubmissionResult = {
-  submissionId: string;
-  status: SubmissionStatus;
-  score: number;
-  executionTimeMs: number;
+type StudentReportRow = StudentInCourse & {
+  summary: StudentSubmissionSummary | null;
 };
 
-type SubmissionItem = {
-  id: string;
-  studentId: string;
-  studentName: string;
-  submittedAt: string;
-  result: SubmissionResult;
-};
+function normalizeCourseList(response: CourseListResponse): Course[] {
+  if (Array.isArray(response)) {
+    return response;
+  }
 
-type ChallengeReport = {
-  id: string;
-  title: string;
-  difficulty: 'Fácil' | 'Media' | 'Difícil';
-  submissions: SubmissionItem[];
-};
-
-type EvaluationReport = {
-  id: string;
-  title: string;
-  description: string;
-  challenges: ChallengeReport[];
-};
-
-type CourseReport = {
-  id: string;
-  professorId: string;
-  professorName: string;
-  name: string;
-  code: string;
-  group: string;
-  period: string;
-  evaluations: EvaluationReport[];
-};
-
-type StudentCourseAverage = {
-  studentId: string;
-  studentName: string;
-  submissions: number;
-  accepted: number;
-  averageScore: number;
-  averageTime: number;
-  lastSubmission: string;
-};
-
-const mockCourses: CourseReport[] = [
-  {
-    id: 'course-bd2',
-    professorId: 'prof-001',
-    professorName: 'Profesor SQL',
-    name: 'Bases de Datos II',
-    code: 'BD2-2026',
-    group: 'Grupo 1',
-    period: '2026-1',
-    evaluations: [
-      {
-        id: 'eval-bd2-parcial-1',
-        title: 'Parcial 1 - Consultas SQL',
-        description: 'Evaluación sobre consultas SELECT, JOIN y filtros.',
-        challenges: [
-          {
-            id: 'challenge-clientes-ciudad',
-            title: 'Clientes por ciudad con órdenes recientes',
-            difficulty: 'Fácil',
-            submissions: [
-              {
-                id: 'result-1',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-18T10:30:00',
-                result: {
-                  submissionId: 'subm-101',
-                  status: 'ACCEPTED',
-                  score: 100,
-                  executionTimeMs: 120,
-                },
-              },
-              {
-                id: 'result-2',
-                studentId: 'stu-002',
-                studentName: 'Carlos Ruiz',
-                submittedAt: '2026-05-18T11:05:00',
-                result: {
-                  submissionId: 'subm-102',
-                  status: 'ACCEPTED',
-                  score: 88,
-                  executionTimeMs: 145,
-                },
-              },
-              {
-                id: 'result-3',
-                studentId: 'stu-003',
-                studentName: 'María Torres',
-                submittedAt: '2026-05-18T11:20:00',
-                result: {
-                  submissionId: 'subm-103',
-                  status: 'WRONG_ANSWER',
-                  score: 62,
-                  executionTimeMs: 98,
-                },
-              },
-            ],
-          },
-          {
-            id: 'challenge-ordenes-fecha',
-            title: 'Órdenes por rango de fechas',
-            difficulty: 'Media',
-            submissions: [
-              {
-                id: 'result-4',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-18T12:10:00',
-                result: {
-                  submissionId: 'subm-104',
-                  status: 'ACCEPTED',
-                  score: 92,
-                  executionTimeMs: 170,
-                },
-              },
-              {
-                id: 'result-5',
-                studentId: 'stu-002',
-                studentName: 'Carlos Ruiz',
-                submittedAt: '2026-05-18T12:22:00',
-                result: {
-                  submissionId: 'subm-105',
-                  status: 'WRONG_ANSWER',
-                  score: 70,
-                  executionTimeMs: 210,
-                },
-              },
-            ],
-          },
-        ],
-      },
-      {
-        id: 'eval-bd2-taller-2',
-        title: 'Taller 2 - Agregaciones',
-        description: 'Práctica sobre GROUP BY, SUM, COUNT y ordenamientos.',
-        challenges: [
-          {
-            id: 'challenge-total-cliente',
-            title: 'Total vendido por cliente',
-            difficulty: 'Media',
-            submissions: [
-              {
-                id: 'result-6',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-15T15:45:00',
-                result: {
-                  submissionId: 'subm-106',
-                  status: 'ACCEPTED',
-                  score: 95,
-                  executionTimeMs: 180,
-                },
-              },
-              {
-                id: 'result-7',
-                studentId: 'stu-003',
-                studentName: 'María Torres',
-                submittedAt: '2026-05-15T16:03:00',
-                result: {
-                  submissionId: 'subm-107',
-                  status: 'ACCEPTED',
-                  score: 82,
-                  executionTimeMs: 140,
-                },
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'course-bd1',
-    professorId: 'prof-001',
-    professorName: 'Profesor SQL',
-    name: 'Bases de Datos I',
-    code: 'BD1-2026',
-    group: 'Grupo 2',
-    period: '2026-1',
-    evaluations: [
-      {
-        id: 'eval-bd1-quiz-1',
-        title: 'Quiz 1 - Filtros básicos',
-        description: 'Evaluación corta sobre filtros con WHERE.',
-        challenges: [
-          {
-            id: 'challenge-clientes-medellin',
-            title: 'Clientes de Medellín',
-            difficulty: 'Fácil',
-            submissions: [
-              {
-                id: 'result-8',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-10T09:12:00',
-                result: {
-                  submissionId: 'subm-108',
-                  status: 'WRONG_ANSWER',
-                  score: 70,
-                  executionTimeMs: 90,
-                },
-              },
-              {
-                id: 'result-9',
-                studentId: 'stu-004',
-                studentName: 'Andrés Pérez',
-                submittedAt: '2026-05-10T09:18:00',
-                result: {
-                  submissionId: 'subm-109',
-                  status: 'ACCEPTED',
-                  score: 100,
-                  executionTimeMs: 85,
-                },
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'course-sql-avanzado',
-    professorId: 'prof-002',
-    professorName: 'Profesor Avanzado',
-    name: 'SQL Avanzado',
-    code: 'SQL-ADV-2026',
-    group: 'Grupo 1',
-    period: '2026-1',
-    evaluations: [
-      {
-        id: 'eval-sql-avanzado-parcial-2',
-        title: 'Parcial 2 - Optimización',
-        description: 'Evaluación sobre rendimiento y buenas prácticas SQL.',
-        challenges: [
-          {
-            id: 'challenge-optimizacion-fechas',
-            title: 'Optimización de consulta por fechas',
-            difficulty: 'Difícil',
-            submissions: [
-              {
-                id: 'result-10',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-20T11:25:00',
-                result: {
-                  submissionId: 'subm-110',
-                  status: 'RUNTIME_ERROR',
-                  score: 40,
-                  executionTimeMs: 2100,
-                },
-              },
-              {
-                id: 'result-11',
-                studentId: 'stu-005',
-                studentName: 'Daniela Castro',
-                submittedAt: '2026-05-20T11:40:00',
-                result: {
-                  submissionId: 'subm-111',
-                  status: 'ACCEPTED',
-                  score: 90,
-                  executionTimeMs: 260,
-                },
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-];
-
-function normalizeRole(role?: string | null) {
-  return String(role || '').toUpperCase();
-}
-
-function getProfessorIdFromUser(user: any) {
-  return String(user?.id || user?.userId || user?.professorId || 'prof-001');
-}
-
-function getVisibleCourses(courses: CourseReport[], user: any) {
-  const role = normalizeRole(user?.role);
-
-  if (role === 'ADMIN') return courses;
-
-  if (role === 'PROFESSOR' || role === 'PROFESOR') {
-    const professorId = getProfessorIdFromUser(user);
-    const ownCourses = courses.filter(
-      (course) => course.professorId === professorId,
-    );
-
-    return ownCourses.length > 0
-      ? ownCourses
-      : courses.filter((course) => course.professorId === 'prof-001');
+  if (response && Array.isArray(response.data)) {
+    return response.data;
   }
 
   return [];
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('es-CO', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
+function normalizeStudents(response: StudentsPageResponse | unknown): StudentInCourse[] {
+  if (!response || typeof response !== 'object') {
+    return [];
+  }
+
+  const payload = response as StudentsPageResponse;
+
+  return Array.isArray(payload.data) ? payload.data : [];
 }
 
-function getCourseChallenges(course: CourseReport | null) {
-  if (!course) return [];
+function formatNumber(value: number | null | undefined) {
+  if (value === null || value === undefined) {
+    return 'N/D';
+  }
 
-  return course.evaluations.flatMap((evaluation) => evaluation.challenges);
-}
-
-function getCourseSubmissions(course: CourseReport | null) {
-  if (!course) return [];
-
-  return getCourseChallenges(course).flatMap(
-    (challenge) => challenge.submissions,
-  );
-}
-
-function getCourseAverageTime(course: CourseReport | null) {
-  const submissions = getCourseSubmissions(course);
-
-  if (submissions.length === 0) return 0;
-
-  const total = submissions.reduce(
-    (acc, submission) => acc + submission.result.executionTimeMs,
-    0,
-  );
-
-  return Math.round(total / submissions.length);
-}
-
-function getCourseAverageScore(course: CourseReport | null) {
-  const submissions = getCourseSubmissions(course);
-
-  if (submissions.length === 0) return 0;
-
-  const total = submissions.reduce(
-    (acc, submission) => acc + submission.result.score,
-    0,
-  );
-
-  return Math.round(total / submissions.length);
-}
-
-function getCourseAcceptedCount(course: CourseReport | null) {
-  return getCourseSubmissions(course).filter(
-    (submission) => submission.result.status === 'ACCEPTED',
-  ).length;
-}
-
-function getCourseStudentAverages(course: CourseReport | null) {
-  const submissions = getCourseSubmissions(course);
-  const grouped = new Map<string, SubmissionItem[]>();
-
-  submissions.forEach((submission) => {
-    const current = grouped.get(submission.studentId) || [];
-    grouped.set(submission.studentId, [...current, submission]);
-  });
-
-  const averages: StudentCourseAverage[] = Array.from(grouped.entries()).map(
-    ([studentId, items]) => {
-      const scoreTotal = items.reduce(
-        (acc, submission) => acc + submission.result.score,
-        0,
-      );
-
-      const timeTotal = items.reduce(
-        (acc, submission) => acc + submission.result.executionTimeMs,
-        0,
-      );
-
-      const accepted = items.filter(
-        (submission) => submission.result.status === 'ACCEPTED',
-      ).length;
-
-      const lastSubmission = [...items].sort(
-        (a, b) =>
-          new Date(b.submittedAt).getTime() -
-          new Date(a.submittedAt).getTime(),
-      )[0];
-
-      return {
-        studentId,
-        studentName: items[0].studentName,
-        submissions: items.length,
-        accepted,
-        averageScore: Math.round(scoreTotal / items.length),
-        averageTime: Math.round(timeTotal / items.length),
-        lastSubmission: lastSubmission.submittedAt,
-      };
-    },
-  );
-
-  return averages.sort((a, b) => b.averageScore - a.averageScore);
+  return new Intl.NumberFormat('es-CO').format(value);
 }
 
 export function ReportsPage() {
@@ -428,70 +56,233 @@ export function ReportsPage() {
   const token = session.token;
   const user = session.user;
   const role = user?.role as DashboardRole | undefined;
-  const normalizedRole = normalizeRole(role);
+  const isProfessor = role === 'PROFESSOR';
+  const isAdmin = role === 'ADMIN';
+  const canViewReports = isProfessor || isAdmin;
 
-  const canViewReports =
-    normalizedRole === 'PROFESSOR' ||
-    normalizedRole === 'PROFESOR' ||
-    normalizedRole === 'ADMIN';
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [students, setStudents] = useState<StudentInCourse[]>([]);
+  const [studentSummaries, setStudentSummaries] = useState<
+    Record<string, StudentSubmissionSummary | null>
+  >({});
 
-  const visibleCourses = useMemo(() => {
-    return getVisibleCourses(mockCourses, user);
-  }, [user]);
-
-  const firstCourse = visibleCourses[0] || null;
-  const [selectedCourseId, setSelectedCourseId] = useState(
-    firstCourse?.id || '',
-  );
-
+  const [courseLoading, setCourseLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [pageError, setPageError] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
 
   useEffect(() => {
-    if (!token || !user) {
+    if (!token || !user || !role) {
       navigate('/login', { replace: true });
     }
-  }, [navigate, token, user]);
+  }, [navigate, token, user, role]);
 
   useEffect(() => {
-    if (!firstCourse) return;
-
-    const courseStillVisible = visibleCourses.some(
-      (course) => course.id === selectedCourseId,
-    );
-
-    if (!courseStillVisible) {
-      setSelectedCourseId(firstCourse.id);
-      setStudentSearch('');
+    if (!token || !user || !role) {
+      return;
     }
-  }, [firstCourse, selectedCourseId, visibleCourses]);
 
-  const selectedCourse = useMemo(() => {
-    return (
-      visibleCourses.find((course) => course.id === selectedCourseId) ||
-      visibleCourses[0] ||
-      null
-    );
-  }, [visibleCourses, selectedCourseId]);
+    const authToken = token;
+    const currentUser = user;
 
-  const courseChallenges = getCourseChallenges(selectedCourse);
-  const courseSubmissions = getCourseSubmissions(selectedCourse);
-  const courseAcceptedCount = getCourseAcceptedCount(selectedCourse);
-  const courseAverageTime = getCourseAverageTime(selectedCourse);
-  const courseAverageScore = getCourseAverageScore(selectedCourse);
-  const courseStudents = getCourseStudentAverages(selectedCourse);
+    let cancelled = false;
+
+    async function loadCourses() {
+      try {
+        setCourseLoading(true);
+        setPageError('');
+
+        const response: CourseListResponse = isProfessor
+          ? await courseApi.findByProfessor(currentUser.id, authToken)
+          : await courseApi.findAll(authToken);
+
+        const loadedCourses = normalizeCourseList(response);
+
+        if (cancelled) {
+          return;
+        }
+
+        setCourses(loadedCourses);
+        setSelectedCourseId((current) => {
+          if (current && loadedCourses.some((course) => course.id === current)) {
+            return current;
+          }
+
+          return loadedCourses[0]?.id ?? '';
+        });
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setCourses([]);
+        setSelectedCourseId('');
+        setPageError(
+          error instanceof Error
+            ? error.message
+            : 'No fue posible cargar los cursos para reportes.',
+        );
+      } finally {
+        if (!cancelled) {
+          setCourseLoading(false);
+        }
+      }
+    }
+
+    void loadCourses();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isProfessor, role, token, user?.id]);
+
+  const selectedCourse = useMemo(
+    () => courses.find((course) => course.id === selectedCourseId) ?? null,
+    [courses, selectedCourseId],
+  );
+
+  useEffect(() => {
+    if (!token || !selectedCourse) {
+      setStudents([]);
+      setStudentSummaries({});
+      return;
+    }
+
+    const authToken = token;
+    const currentCourse = selectedCourse;
+
+    let cancelled = false;
+
+    async function loadCourseDetail() {
+      try {
+        setDetailLoading(true);
+        setPageError('');
+        setStudentSearch('');
+
+        const studentsResponse = await enrollmentApi.getStudentsByCourse(
+          currentCourse.id,
+          authToken,
+          1,
+          100,
+        );
+
+        const loadedStudents = normalizeStudents(studentsResponse);
+
+        if (cancelled) {
+          return;
+        }
+
+        setStudents(loadedStudents);
+
+        if (!isProfessor) {
+          setStudentSummaries({});
+          return;
+        }
+
+        const summaryEntries = await Promise.all(
+          loadedStudents.map(async (studentEntry) => {
+            try {
+              const response = await reportsApi.getStudentSubmissionSummary(
+                currentCourse.id,
+                studentEntry.student.id,
+                authToken,
+              );
+
+              return [studentEntry.student.id, response.data] as const;
+            } catch {
+              return [studentEntry.student.id, null] as const;
+            }
+          }),
+        );
+
+        if (cancelled) {
+          return;
+        }
+
+        setStudentSummaries(Object.fromEntries(summaryEntries));
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setStudents([]);
+        setStudentSummaries({});
+        setPageError(
+          error instanceof Error
+            ? error.message
+            : 'No fue posible cargar el reporte del curso.',
+        );
+      } finally {
+        if (!cancelled) {
+          setDetailLoading(false);
+        }
+      }
+    }
+
+    void loadCourseDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isProfessor, selectedCourse, token]);
+
+  const studentRows = useMemo<StudentReportRow[]>(() => {
+    return students.map((studentEntry) => ({
+      ...studentEntry,
+      summary: studentSummaries[studentEntry.student.id] ?? null,
+    }));
+  }, [studentSummaries, students]);
 
   const filteredStudents = useMemo(() => {
     const search = studentSearch.trim().toLowerCase();
 
-    if (!search) return courseStudents;
+    if (!search) {
+      return studentRows;
+    }
 
-    return courseStudents.filter((student) => {
+    return studentRows.filter((row) => {
       return (
-        student.studentName.toLowerCase().includes(search) ||
-        student.studentId.toLowerCase().includes(search)
+        row.student.fullName.toLowerCase().includes(search) ||
+        row.student.email.toLowerCase().includes(search) ||
+        row.student.id.toLowerCase().includes(search)
       );
     });
-  }, [courseStudents, studentSearch]);
+  }, [studentRows, studentSearch]);
+
+  const courseMetrics = useMemo(() => {
+    const summaries = studentRows
+      .map((row) => row.summary)
+      .filter((summary): summary is StudentSubmissionSummary => Boolean(summary));
+
+    const totalSubmissions = summaries.reduce((total, summary) => total + summary.total, 0);
+    const totalAccepted = summaries.reduce((total, summary) => total + summary.accepted, 0);
+
+    const weightedScore = summaries.reduce((total, summary) => {
+      if (summary.avgScore === null) {
+        return total;
+      }
+
+      return total + summary.avgScore * summary.total;
+    }, 0);
+
+    const weightedExecutionTime = summaries.reduce((total, summary) => {
+      if (summary.avgExecutionTimeMs === null) {
+        return total;
+      }
+
+      return total + summary.avgExecutionTimeMs * summary.total;
+    }, 0);
+
+    return {
+      students: studentRows.length,
+      submissions: totalSubmissions,
+      accepted: totalAccepted,
+      averageScore: totalSubmissions > 0 ? Math.round(weightedScore / totalSubmissions) : null,
+      averageExecutionTime:
+        totalSubmissions > 0 ? Math.round(weightedExecutionTime / totalSubmissions) : null,
+    };
+  }, [studentRows]);
 
   const handleLogout = () => {
     authStorage.clearSession();
@@ -513,9 +304,7 @@ export function ReportsPage() {
           <div className="reports-heading">
             <span>Reportes</span>
             <h1>Reportes no disponibles</h1>
-            <p>
-              Esta pantalla está reservada para profesores y administradores.
-            </p>
+            <p>Esta pantalla está reservada para profesores y administradores.</p>
           </div>
 
           <div className="reports-empty-state">
@@ -537,12 +326,16 @@ export function ReportsPage() {
           <span>Reportes</span>
           <h1>Reportes por curso</h1>
           <p>
-            Selecciona un curso para consultar sus métricas generales y el
-            promedio de los estudiantes según los resultados obtenidos.
+            Selecciona un curso para consultar las métricas obtenidas desde el
+            backend y el resumen de cada estudiante inscrito.
           </p>
         </div>
 
-        {visibleCourses.length === 0 || !selectedCourse ? (
+        {pageError && <div className="reports-empty-state">{pageError}</div>}
+
+        {courseLoading ? (
+          <div className="reports-empty-state">Cargando cursos...</div>
+        ) : courses.length === 0 || !selectedCourse ? (
           <div className="reports-empty-state">
             No hay cursos disponibles para generar reportes.
           </div>
@@ -554,22 +347,17 @@ export function ReportsPage() {
               </div>
 
               <div className="reports-course-selector-list">
-                {visibleCourses.map((course) => {
-                  const submissions = getCourseSubmissions(course);
-                  const challenges = getCourseChallenges(course);
-                  const averageScore = getCourseAverageScore(course);
+                {courses.map((course) => {
+                  const isSelected = selectedCourse.id === course.id;
 
                   return (
                     <button
                       key={course.id}
                       type="button"
                       className={`reports-course-selector-card ${
-                        selectedCourse.id === course.id ? 'active' : ''
+                        isSelected ? 'active' : ''
                       }`}
-                      onClick={() => {
-                        setSelectedCourseId(course.id);
-                        setStudentSearch('');
-                      }}
+                      onClick={() => setSelectedCourseId(course.id)}
                     >
                       <div className="reports-course-selector-top">
                         <strong>{course.name}</strong>
@@ -579,13 +367,7 @@ export function ReportsPage() {
                         <span>{course.code}</span>
                         <span>{course.group}</span>
                         <span>{course.period}</span>
-                        {normalizedRole === 'ADMIN' && (
-                          <span>{course.professorName}</span>
-                        )}
-                        <span>{course.evaluations.length} evaluaciones</span>
-                        <span>{challenges.length} retos</span>
-                        <span>{submissions.length} envíos</span>
-                        <span>Promedio {averageScore}/100</span>
+                        <span>{course.professorId}</span>
                       </div>
                     </button>
                   );
@@ -596,56 +378,48 @@ export function ReportsPage() {
             <article className="reports-detail-panel">
               <div className="reports-detail-header">
                 <div>
-                  <span className="reports-course-eyebrow">
-                    Reporte del curso
-                  </span>
-
+                  <span className="reports-course-eyebrow">Reporte del curso</span>
                   <h2>{selectedCourse.name}</h2>
-
                   <p>
-                    {selectedCourse.code} · {selectedCourse.group} ·{' '}
-                    {selectedCourse.period}
-                    {normalizedRole === 'ADMIN'
-                      ? ` · Profesor: ${selectedCourse.professorName}`
-                      : ''}
+                    {selectedCourse.code} · {selectedCourse.group} · {selectedCourse.period}
                   </p>
                 </div>
               </div>
 
+              {isAdmin && (
+                <div className="reports-empty-state" style={{ marginBottom: '24px' }}>
+                  Como administrador puedes ver cursos y estudiantes inscritos. Las métricas de envíos se consultan directamente en el backend para profesores.
+                </div>
+              )}
+
               <section className="reports-metrics-grid reports-course-metrics">
                 <article className="reports-metric-card">
-                  <span>Evaluaciones</span>
-                  <strong>{selectedCourse.evaluations.length}</strong>
-                  <p>Evaluaciones creadas en este curso.</p>
-                </article>
-
-                <article className="reports-metric-card">
-                  <span>Retos</span>
-                  <strong>{courseChallenges.length}</strong>
-                  <p>Retos asociados a las evaluaciones.</p>
+                  <span>Estudiantes</span>
+                  <strong>{courseMetrics.students}</strong>
+                  <p>Estudiantes inscritos en el curso.</p>
                 </article>
 
                 <article className="reports-metric-card">
                   <span>Envíos</span>
-                  <strong>{courseSubmissions.length}</strong>
-                  <p>Total de soluciones enviadas.</p>
+                  <strong>{formatNumber(courseMetrics.submissions)}</strong>
+                  <p>Total de soluciones registradas.</p>
                 </article>
 
                 <article className="reports-metric-card">
                   <span>Aceptados</span>
-                  <strong>{courseAcceptedCount}</strong>
+                  <strong>{formatNumber(courseMetrics.accepted)}</strong>
                   <p>Soluciones aceptadas en este curso.</p>
                 </article>
 
                 <article className="reports-metric-card">
-                  <span>Promedio curso</span>
-                  <strong>{courseAverageScore}/100</strong>
-                  <p>Promedio de calificaciones del curso.</p>
+                  <span>Promedio</span>
+                  <strong>{formatNumber(courseMetrics.averageScore)} / 100</strong>
+                  <p>Promedio ponderado de calificaciones.</p>
                 </article>
 
                 <article className="reports-metric-card">
                   <span>Tiempo promedio</span>
-                  <strong>{courseAverageTime} ms</strong>
+                  <strong>{formatNumber(courseMetrics.averageExecutionTime)} ms</strong>
                   <p>Tiempo medio de ejecución.</p>
                 </article>
               </section>
@@ -653,6 +427,9 @@ export function ReportsPage() {
               <section className="reports-section-card">
                 <div className="reports-panel-header compact">
                   <h2>Promedio por estudiante</h2>
+                  <p>
+                    Datos calculados con el endpoint de resumen por estudiante.
+                  </p>
                 </div>
 
                 <div className="reports-student-search">
@@ -660,48 +437,56 @@ export function ReportsPage() {
                     type="search"
                     value={studentSearch}
                     onChange={(event) => setStudentSearch(event.target.value)}
-                    placeholder="Buscar estudiante por nombre o código..."
+                    placeholder="Buscar estudiante por nombre, correo o ID..."
                   />
                 </div>
 
-                <div className="reports-table-wrapper">
-                  <table className="reports-table">
-                    <thead>
-                      <tr>
-                        <th>Estudiante</th>
-                        <th>Envíos</th>
-                        <th>Aceptados</th>
-                        <th>Promedio</th>
-                        <th>Tiempo promedio</th>
-                        <th>Último envío</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {filteredStudents.map((student) => (
-                        <tr key={student.studentId}>
-                          <td>
-                            <strong>{student.studentName}</strong>
-                            <span>{student.studentId}</span>
-                          </td>
-                          <td>{student.submissions}</td>
-                          <td>{student.accepted}</td>
-                          <td>
-                            <strong>{student.averageScore}/100</strong>
-                          </td>
-                          <td>{student.averageTime} ms</td>
-                          <td>{formatDate(student.lastSubmission)}</td>
+                {detailLoading ? (
+                  <div className="reports-empty-state">Cargando estudiantes y resúmenes...</div>
+                ) : (
+                  <div className="reports-table-wrapper">
+                    <table className="reports-table">
+                      <thead>
+                        <tr>
+                          <th>Estudiante</th>
+                          <th>Correo</th>
+                          <th>Envíos</th>
+                          <th>Aceptados</th>
+                          <th>Promedio</th>
+                          <th>Tiempo promedio</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
 
-                  {filteredStudents.length === 0 && (
-                    <div className="reports-empty-state">
-                      No se encontraron estudiantes para este curso.
-                    </div>
-                  )}
-                </div>
+                      <tbody>
+                        {filteredStudents.map((student) => (
+                          <tr key={student.student.id}>
+                            <td>
+                              <strong>{student.student.fullName}</strong>
+                              <span>{student.student.id}</span>
+                            </td>
+                            <td>{student.student.email}</td>
+                            <td>{formatNumber(student.summary?.total)}</td>
+                            <td>{formatNumber(student.summary?.accepted)}</td>
+                            <td>
+                              <strong>
+                                {student.summary?.avgScore === null || student.summary?.avgScore === undefined
+                                  ? 'N/D'
+                                  : `${formatNumber(student.summary.avgScore)} / 100`}
+                              </strong>
+                            </td>
+                            <td>{formatNumber(student.summary?.avgExecutionTimeMs)} ms</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+
+                    {filteredStudents.length === 0 && (
+                      <div className="reports-empty-state">
+                        No se encontraron estudiantes para este curso.
+                      </div>
+                    )}
+                  </div>
+                )}
               </section>
             </article>
           </section>
