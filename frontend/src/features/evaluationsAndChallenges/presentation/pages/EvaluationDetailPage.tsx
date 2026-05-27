@@ -10,7 +10,7 @@ import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
 import { EvaluationModal } from '../components/EvaluationModal';
 import { StudentAttemptModal } from '../components/StudentAttemptModal';
-import { formatDate, getSessionUser, getStatusLabel } from '../utils/evaluationUtils';
+import { formatDate, getSessionUser } from '../utils/evaluationUtils';
 import '../styles/EvaluationsAndChallengesPage.css';
 
 interface ActiveAttempt {
@@ -50,8 +50,17 @@ export default function EvaluationDetailPage() {
     setIsLoading(true);
     setPageError('');
     try {
-      const evalRes: any = await evaluationApi.findById(evaluationId, token);
-      const evalData: Evaluation = evalRes?.data || evalRes;
+      let evalData: Evaluation;
+      if (isStudent) {
+        const listRes: any = await evaluationApi.listVisibleForStudent(courseId!, 1, 100, token);
+        const items: Evaluation[] = listRes?.data?.data ?? listRes?.data ?? listRes ?? [];
+        const found = items.find((e: Evaluation) => String(e.id) === evaluationId);
+        if (!found) throw new Error('Evaluación no encontrada o no disponible');
+        evalData = found;
+      } else {
+        const evalRes: any = await evaluationApi.findById(evaluationId, token);
+        evalData = evalRes?.data || evalRes;
+      }
       setEvaluation(evalData);
 
       const chalRes: any =
@@ -199,8 +208,8 @@ export default function EvaluationDetailPage() {
             <div className="eval-detail-grid">
               <div>
                 <strong>Estado</strong>
-                <span className={`eval-status-badge ${evaluation.status === 'ACTIVE' ? 'active' : 'inactive'}`} style={{ display: 'inline-block', marginTop: 6 }}>
-                  {getStatusLabel(evaluation.status)}
+                <span className={`eval-status-badge ${evaluation.isVisible ? 'active' : 'inactive'}`} style={{ display: 'inline-block', marginTop: 6 }}>
+                  {evaluation.isVisible ? 'Visible' : 'Oculta'}
                 </span>
               </div>
               <div>

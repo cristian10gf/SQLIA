@@ -31,7 +31,7 @@ export interface Evaluation {
   description: string;
   startDate: string;
   endDate: string;
-  status: EvaluationStatus;
+  status?: EvaluationStatus;
   durationMinutes: number;
   maxAttempts: number;
   isVisible: boolean;

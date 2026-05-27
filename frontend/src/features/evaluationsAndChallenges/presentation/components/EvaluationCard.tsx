@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import type { Evaluation } from '../../domain/evaluationChallenge.types';
-import { formatDate, getStatusLabel } from '../utils/evaluationUtils';
+import { formatDate } from '../utils/evaluationUtils';
 import '../styles/EvaluationsAndChallengesPage.css';
 
 interface EvaluationCardProps {
@@ -42,8 +42,8 @@ export function EvaluationCard({
             <h3>{evaluation.title}</h3>
             <p>{evaluation.description}</p>
           </div>
-          <span className={`eval-status-badge ${evaluation.status === 'ACTIVE' ? 'active' : 'inactive'}`}>
-            {getStatusLabel(evaluation.status)}
+          <span className={`eval-status-badge ${evaluation.isVisible ? 'active' : 'inactive'}`}>
+            {evaluation.isVisible ? 'Visible' : 'Oculta'}
           </span>
         </div>
 
