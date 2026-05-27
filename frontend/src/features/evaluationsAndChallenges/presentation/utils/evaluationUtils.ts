@@ -37,6 +37,7 @@ export const emptyEvaluation: Omit<Evaluation, 'id'> = {
   status: 'ACTIVE',
   durationMinutes: 90,
   maxAttempts: 3,
+  isVisible: false,
   courseName: '',
   challenges: [],
 };

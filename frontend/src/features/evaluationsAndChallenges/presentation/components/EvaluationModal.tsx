@@ -27,6 +27,7 @@ export function EvaluationModal({ evaluation, courseId, token, onSave, onClose }
           status: evaluation.status || 'ACTIVE',
           durationMinutes: evaluation.durationMinutes || 90,
           maxAttempts: evaluation.maxAttempts || 3,
+          isVisible: evaluation.isVisible ?? false,
           courseName: evaluation.courseName || '',
         }
       : {
@@ -37,6 +38,7 @@ export function EvaluationModal({ evaluation, courseId, token, onSave, onClose }
           status: emptyEvaluation.status,
           durationMinutes: emptyEvaluation.durationMinutes,
           maxAttempts: emptyEvaluation.maxAttempts,
+          isVisible: emptyEvaluation.isVisible,
           courseName: emptyEvaluation.courseName,
         },
   );
@@ -49,7 +51,7 @@ export function EvaluationModal({ evaluation, courseId, token, onSave, onClose }
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose]);
 
-  const handleChange = (field: keyof EvaluationFormData, value: string | number | EvaluationStatus) => {
+  const handleChange = (field: keyof EvaluationFormData, value: string | number | boolean | EvaluationStatus) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError('');
   };
@@ -71,13 +73,18 @@ export function EvaluationModal({ evaluation, courseId, token, onSave, onClose }
 
     setIsSaving(true);
     try {
-      const { courseName, status, ...rest } = form;
+      const { courseName, status, isVisible, ...rest } = form;
       const payload = { ...rest, courseId };
 
       if (isEditing && evaluation) {
         await evaluationApi.update(evaluation.id.toString(), payload, token);
+        await evaluationApi.changeVisibility(evaluation.id.toString(), isVisible, token);
       } else {
-        await evaluationApi.create(payload, token);
+        const created: any = await evaluationApi.create(payload, token);
+        const newId = created?.data?.id ?? created?.id;
+        if (isVisible && newId) {
+          await evaluationApi.changeVisibility(newId, true, token);
+        }
       }
       onSave();
     } catch (err) {
@@ -132,6 +139,24 @@ export function EvaluationModal({ evaluation, courseId, token, onSave, onClose }
           <div className="eval-form-group">
             <label>Intentos máximos</label>
             <input type="number" min={1} value={form.maxAttempts} onChange={(e) => handleChange('maxAttempts', Number(e.target.value))} />
+          </div>
+
+          <div className="eval-form-group full">
+            <label>Visibilidad</label>
+            <label className="eval-toggle-label">
+              <input
+                type="checkbox"
+                className="eval-toggle-input"
+                checked={form.isVisible}
+                onChange={(e) => handleChange('isVisible', e.target.checked)}
+              />
+              <span className="eval-toggle-track">
+                <span className="eval-toggle-thumb" />
+              </span>
+              <span className="eval-toggle-text">
+                {form.isVisible ? 'Visible para estudiantes' : 'Oculta para estudiantes'}
+              </span>
+            </label>
           </div>
         </div>        </div>
         <div className="eval-modal-footer">

@@ -973,6 +973,59 @@
   gap: 4px;
 }
 
+/* ── Visibility toggle ───────────────────────────────────────────────────── */
+.eval-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.eval-toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.eval-toggle-track {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  background: #c8d0dc;
+  border-radius: 12px;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.eval-toggle-input:checked + .eval-toggle-track {
+  background: #2563eb;
+}
+
+.eval-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  transition: left 0.2s;
+}
+
+.eval-toggle-input:checked + .eval-toggle-track .eval-toggle-thumb {
+  left: 23px;
+}
+
+.eval-toggle-text {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
 .eval-sandbox-inline-error {
   color: #c1261b;
   font-size: 11px;
