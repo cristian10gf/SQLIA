@@ -20,9 +20,13 @@ function stableSerialize(value: unknown): string {
     if (v === null) return v;
     if (typeof v === 'string') {
       const trimmed = v.trim();
-      if (trimmed !== '' && !isNaN(Number(trimmed))) return Number(trimmed);
+      if (trimmed !== '' && !isNaN(Number(trimmed))) {
+        const n = Number(trimmed);
+        return Math.round(n * 1e6) / 1e6;
+      }
       return v;
     }
+    if (typeof v === 'number') return Math.round(v * 1e6) / 1e6;
     if (typeof v !== 'object') return v;
     if (Array.isArray(v)) return v.map(norm);
     const o = v as Record<string, unknown>;

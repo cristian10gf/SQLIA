@@ -5,6 +5,15 @@ import {
 
 export const SUBMISSION_REPOSITORY = Symbol('SUBMISSION_REPOSITORY');
 
+export interface LeaderboardEntry {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  totalScore: number;
+  challengesSolved: number;
+  submissionCount: number;
+}
+
 export interface CreateSubmissionData {
   id: string;
   studentId: string;
@@ -31,4 +40,6 @@ export interface ISubmissionRepository {
   findStuckRunning(olderThanMs: number): Promise<Submission[]>;
   /** Transición atómica QUEUED → RUNNING; retorna true si se actualizó. */
   claimForProcessing(id: string): Promise<boolean>;
+  countByStudentAndEvaluation(studentId: string, evaluationId: string): Promise<number>;
+  getLeaderboard(evaluationId: string): Promise<LeaderboardEntry[]>;
 }
