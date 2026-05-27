@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { authStorage } from '../../../auth/infrastructure/authStorage';
 import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 import type { DashboardRole } from '../../../../shared/layouts/DashboardLayout';
+import { courseApi } from '../../../courses/infrastructure/courseApi';
+import { evaluationApi } from '../../../evaluationsAndChallenges/infrastructure/evaluationApi';
+import { evaluationChallengeApi } from '../../../evaluationsAndChallenges/infrastructure/evaluationChallengeApi';
 import '../styles/ResultsPage.css';
 
 type SubmissionStatus = 'ACCEPTED' | 'WRONG_ANSWER' | 'RUNTIME_ERROR';
@@ -50,328 +53,6 @@ type CourseResult = {
   evaluations: EvaluationResult[];
 };
 
-const mockCourses: CourseResult[] = [
-  {
-    id: 'course-bd2',
-    professorId: 'prof-001',
-    professorName: 'Profesor SQL',
-    name: 'Bases de Datos II',
-    code: 'BD2-2026',
-    group: 'Grupo 1',
-    period: '2026-1',
-    evaluations: [
-      {
-        id: 'eval-bd2-parcial-1',
-        title: 'Parcial 1 - Consultas SQL',
-        description: 'Evaluación sobre consultas SELECT, JOIN y filtros.',
-        challenges: [
-          {
-            id: 'challenge-clientes-ciudad',
-            title: 'Clientes por ciudad con órdenes recientes',
-            description:
-              'Consultar los clientes de una ciudad junto con sus órdenes recientes.',
-            difficulty: 'Fácil',
-            submissions: [
-              {
-                id: 'result-1',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-18T10:30:00',
-                submittedQuery: `SELECT *
-FROM orders o
-JOIN customers c ON o.customer_id = c.id
-WHERE c.city = 'Bogotá'
-ORDER BY o.created_at DESC;`,
-                result: {
-                  submissionId: 'subm-101',
-                  status: 'ACCEPTED',
-                  score: 100,
-                  executionTimeMs: 120,
-                },
-                assistantFeedback: `La consulta puede funcionar, pero tiene oportunidades de mejora.
-
-Recomendaciones:
-1. Evita usar SELECT * si no necesitas todas las columnas.
-2. Selecciona únicamente los campos requeridos para reducir transferencia de datos.
-3. Mantén alias claros para mejorar la lectura de la consulta.
-
-Sugerencia de índices:
-1. Se recomienda revisar un índice sobre customers.city.
-2. También puede ser útil un índice sobre orders.customer_id.
-
-Propuesta de reescritura:
-SELECT
-  c.name,
-  c.city,
-  o.total,
-  o.created_at
-FROM orders o
-JOIN customers c ON o.customer_id = c.id
-WHERE c.city = 'Bogotá'
-ORDER BY o.created_at DESC;`,
-              },
-              {
-                id: 'result-2',
-                studentId: 'stu-002',
-                studentName: 'Carlos Ruiz',
-                submittedAt: '2026-05-18T11:05:00',
-                submittedQuery: `SELECT c.name, c.city, o.total
-FROM customers c
-JOIN orders o ON c.id = o.customer_id
-WHERE c.city = 'Bogotá';`,
-                result: {
-                  submissionId: 'subm-102',
-                  status: 'ACCEPTED',
-                  score: 88,
-                  executionTimeMs: 145,
-                },
-                assistantFeedback: `La consulta cumple el objetivo principal y evita SELECT *.
-
-Recomendaciones:
-1. Mantén alias consistentes.
-2. Agrega ORDER BY si el enunciado exige un orden específico.
-3. Revisa índices sobre city y customer_id si el volumen de datos crece.`,
-              },
-              {
-                id: 'result-3',
-                studentId: 'stu-003',
-                studentName: 'María Torres',
-                submittedAt: '2026-05-18T11:20:00',
-                submittedQuery: `SELECT name
-FROM customers
-WHERE city = 'Bogotá';`,
-                result: {
-                  submissionId: 'subm-103',
-                  status: 'WRONG_ANSWER',
-                  score: 62,
-                  executionTimeMs: 98,
-                },
-                assistantFeedback: `La consulta filtra clientes, pero no incorpora la tabla de órdenes solicitada por el reto.
-
-Recomendaciones:
-1. Revisa el enunciado.
-2. Agrega el JOIN con orders.
-3. Incluye las columnas requeridas por la evaluación.`,
-              },
-            ],
-          },
-          {
-            id: 'challenge-ordenes-fecha',
-            title: 'Órdenes por rango de fechas',
-            description: 'Consultar órdenes dentro de un rango de fechas.',
-            difficulty: 'Media',
-            submissions: [
-              {
-                id: 'result-4',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-18T12:10:00',
-                submittedQuery: `SELECT id, customer_id, total, created_at
-FROM orders
-WHERE created_at BETWEEN '2026-01-01' AND '2026-03-31';`,
-                result: {
-                  submissionId: 'subm-104',
-                  status: 'ACCEPTED',
-                  score: 92,
-                  executionTimeMs: 170,
-                },
-                assistantFeedback: `Buena solución. Se recomienda validar si el reto exige ordenamiento descendente.`,
-              },
-              {
-                id: 'result-5',
-                studentId: 'stu-002',
-                studentName: 'Carlos Ruiz',
-                submittedAt: '2026-05-18T12:22:00',
-                submittedQuery: `SELECT *
-FROM orders
-WHERE created_at > '2026-01-01';`,
-                result: {
-                  submissionId: 'subm-105',
-                  status: 'WRONG_ANSWER',
-                  score: 70,
-                  executionTimeMs: 210,
-                },
-                assistantFeedback: `La consulta funciona, pero no respeta completamente el rango de fechas solicitado.`,
-              },
-            ],
-          },
-        ],
-      },
-      {
-        id: 'eval-bd2-taller-2',
-        title: 'Taller 2 - Agregaciones',
-        description: 'Práctica sobre GROUP BY, SUM, COUNT y ordenamientos.',
-        challenges: [
-          {
-            id: 'challenge-total-cliente',
-            title: 'Total vendido por cliente',
-            description: 'Calcular el total vendido agrupado por cliente.',
-            difficulty: 'Media',
-            submissions: [
-              {
-                id: 'result-6',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-15T15:45:00',
-                submittedQuery: `SELECT c.name, SUM(o.total) AS total_orders
-FROM customers c
-JOIN orders o ON o.customer_id = c.id
-GROUP BY c.name
-ORDER BY total_orders DESC;`,
-                result: {
-                  submissionId: 'subm-106',
-                  status: 'ACCEPTED',
-                  score: 95,
-                  executionTimeMs: 180,
-                },
-                assistantFeedback: `La solución resuelve el reto y aplica correctamente SUM con GROUP BY.
-
-Recomendaciones:
-1. Agrupa por el identificador del cliente además del nombre.
-2. Usa un alias semántico como total_vendido.`,
-              },
-              {
-                id: 'result-7',
-                studentId: 'stu-003',
-                studentName: 'María Torres',
-                submittedAt: '2026-05-15T16:03:00',
-                submittedQuery: `SELECT customer_id, SUM(total)
-FROM orders
-GROUP BY customer_id;`,
-                result: {
-                  submissionId: 'subm-107',
-                  status: 'ACCEPTED',
-                  score: 82,
-                  executionTimeMs: 140,
-                },
-                assistantFeedback: `La agregación es válida, pero podría incluir el nombre del cliente para una respuesta más completa.`,
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'course-bd1',
-    professorId: 'prof-001',
-    professorName: 'Profesor SQL',
-    name: 'Bases de Datos I',
-    code: 'BD1-2026',
-    group: 'Grupo 2',
-    period: '2026-1',
-    evaluations: [
-      {
-        id: 'eval-bd1-quiz-1',
-        title: 'Quiz 1 - Filtros básicos',
-        description: 'Evaluación corta sobre filtros con WHERE.',
-        challenges: [
-          {
-            id: 'challenge-clientes-medellin',
-            title: 'Clientes de Medellín',
-            description: 'Consultar clientes filtrados por ciudad.',
-            difficulty: 'Fácil',
-            submissions: [
-              {
-                id: 'result-8',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-10T09:12:00',
-                submittedQuery: `SELECT name
-FROM customers
-WHERE city = 'Medellín';`,
-                result: {
-                  submissionId: 'subm-108',
-                  status: 'WRONG_ANSWER',
-                  score: 70,
-                  executionTimeMs: 90,
-                },
-                assistantFeedback: `La consulta está bien estructurada, pero no retorna todas las columnas esperadas por el caso de prueba.`,
-              },
-              {
-                id: 'result-9',
-                studentId: 'stu-004',
-                studentName: 'Andrés Pérez',
-                submittedAt: '2026-05-10T09:18:00',
-                submittedQuery: `SELECT id, name, city
-FROM customers
-WHERE city = 'Medellín';`,
-                result: {
-                  submissionId: 'subm-109',
-                  status: 'ACCEPTED',
-                  score: 100,
-                  executionTimeMs: 85,
-                },
-                assistantFeedback: `Solución correcta. Retorna las columnas esperadas y aplica correctamente el filtro.`,
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'course-sql-avanzado',
-    professorId: 'prof-002',
-    professorName: 'Profesor Avanzado',
-    name: 'SQL Avanzado',
-    code: 'SQL-ADV-2026',
-    group: 'Grupo 1',
-    period: '2026-1',
-    evaluations: [
-      {
-        id: 'eval-sql-avanzado-parcial-2',
-        title: 'Parcial 2 - Optimización',
-        description: 'Evaluación sobre rendimiento y buenas prácticas SQL.',
-        challenges: [
-          {
-            id: 'challenge-optimizacion-fechas',
-            title: 'Optimización de consulta por fechas',
-            description: 'Optimizar una consulta por rango de fechas.',
-            difficulty: 'Difícil',
-            submissions: [
-              {
-                id: 'result-10',
-                studentId: 'stu-001',
-                studentName: 'Laura Gómez',
-                submittedAt: '2026-05-20T11:25:00',
-                submittedQuery: `SELECT *
-FROM orders
-WHERE created_at BETWEEN '2026-01-01' AND '2026-03-31'
-ORDER BY created_at DESC;`,
-                result: {
-                  submissionId: 'subm-110',
-                  status: 'RUNTIME_ERROR',
-                  score: 40,
-                  executionTimeMs: 2100,
-                },
-                assistantFeedback: `La consulta presenta problemas durante la ejecución y debe revisarse antes de considerarse correcta.`,
-              },
-              {
-                id: 'result-11',
-                studentId: 'stu-005',
-                studentName: 'Daniela Castro',
-                submittedAt: '2026-05-20T11:40:00',
-                submittedQuery: `SELECT id, customer_id, total, created_at
-FROM orders
-WHERE created_at >= '2026-01-01'
-  AND created_at <= '2026-03-31'
-ORDER BY created_at DESC;`,
-                result: {
-                  submissionId: 'subm-111',
-                  status: 'ACCEPTED',
-                  score: 90,
-                  executionTimeMs: 260,
-                },
-                assistantFeedback: `Buena solución. Evita SELECT * y expresa correctamente el rango de fechas.`,
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-];
 
 function normalizeRole(role?: string | null) {
   return String(role || '').toUpperCase();
@@ -510,9 +191,127 @@ export function ResultsPage() {
     normalizedRole === 'PROFESOR' ||
     normalizedRole === 'ADMIN';
 
+  const [fetchedCourses, setFetchedCourses] = useState<CourseResult[]>([]);
+
   const visibleCourses = useMemo(() => {
-    return getVisibleCourses(mockCourses, user);
-  }, [user]);
+    return getVisibleCourses(fetchedCourses, user);
+  }, [fetchedCourses, user]);
+
+  useEffect(() => {
+    if (!token || !user) return;
+
+    let cancelled = false;
+
+    const authToken = token as string;
+    const userId = String(user.id);
+
+    async function normalizeResponse(response: any) {
+      if (!response) return [];
+      if (Array.isArray(response)) return response;
+      if (response?.data && Array.isArray(response.data)) return response.data;
+      return [];
+    }
+
+    async function loadAll() {
+      try {
+        let coursesResp: any;
+
+        if (normalizedRole === 'ADMIN') {
+          coursesResp = await courseApi.findAll(authToken);
+        } else if (normalizedRole === 'PROFESSOR' || normalizedRole === 'PROFESOR') {
+          coursesResp = await courseApi.findByProfessor(userId, authToken);
+        } else {
+          coursesResp = await courseApi.findByStudent(userId, authToken);
+        }
+
+        const coursesList: any[] = await normalizeResponse(coursesResp);
+
+        const mapped = await Promise.all(
+          coursesList.map(async (c: any) => {
+            // load evaluations
+            let evalResp: any;
+            try {
+              if (isProfessorView) {
+                evalResp = await evaluationApi.listForProfessor(String(c.id), { page: 1, limit: 100, visibility: 'all' }, authToken);
+              } else {
+                evalResp = await evaluationApi.listVisibleForStudent(String(c.id), 1, 100, authToken);
+              }
+            } catch {
+              evalResp = [];
+            }
+
+            const evalList: any[] = Array.isArray(evalResp?.data?.data)
+              ? evalResp.data.data
+              : Array.isArray(evalResp?.data)
+              ? evalResp.data
+              : Array.isArray(evalResp)
+              ? evalResp
+              : [];
+
+            const evaluations = await Promise.all(
+              evalList.map(async (ev: any) => {
+                // load challenges
+                let chResp: any;
+                try {
+                  if (isProfessorView) {
+                    chResp = await evaluationChallengeApi.listByEvaluation(String(ev.id), { page: 1, limit: 200, visibility: 'all' }, authToken);
+                  } else {
+                    chResp = await evaluationChallengeApi.listByEvaluationForStudent(String(ev.id), authToken);
+                  }
+                } catch {
+                  chResp = [];
+                }
+
+                const chList: any[] = Array.isArray(chResp?.data)
+                  ? chResp.data
+                  : Array.isArray(chResp)
+                  ? chResp
+                  : Array.isArray(chResp?.data?.data)
+                  ? chResp.data.data
+                  : [];
+
+                return {
+                  id: String(ev.id),
+                  title: ev.title ?? ev.name ?? 'Sin título',
+                  description: ev.description ?? '',
+                  challenges: chList.map((ch: any) => ({
+                    id: String(ch.id),
+                    title: ch.title ?? ch.name ?? 'Reto',
+                    description: ch.description ?? '',
+                    difficulty: ch.difficulty ?? 'Media',
+                    submissions: [] as SubmissionItem[],
+                  })),
+                } as EvaluationResult;
+              }),
+            );
+
+            return {
+              id: String(c.id),
+              professorId: String(c.professorId ?? ''),
+              professorName: c.professorName ?? '',
+              name: c.name ?? c.title ?? 'Curso',
+              code: c.code ?? '',
+              group: c.group ?? '',
+              period: c.period ?? '',
+              evaluations,
+            } as CourseResult;
+          }),
+        );
+
+        if (!cancelled) {
+          setFetchedCourses(mapped);
+        }
+      } catch (err) {
+        // ignore errors for now
+      }
+    }
+
+    void loadAll();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, user?.id, normalizedRole, isProfessorView]);
 
   const firstCourse = visibleCourses[0] || null;
   const firstEvaluation = firstCourse?.evaluations[0] || null;
@@ -719,12 +518,6 @@ export function ResultsPage() {
               ? 'Resultados de cursos, evaluaciones y retos'
               : 'Resultados y recomendaciones'}
           </h1>
-
-          <p>
-            {isProfessorView
-              ? 'Consulta los cursos, sus evaluaciones, los retos y los resultados enviados por los estudiantes.'
-              : 'Selecciona un curso, una evaluación y un reto para revisar tus envíos SQL.'}
-          </p>
         </div>
 
         {visibleCourses.length === 0 || !selectedCourse ? (
