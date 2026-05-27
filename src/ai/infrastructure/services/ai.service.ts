@@ -26,7 +26,7 @@ export class AiService implements IAiProvider {
         {
           role: 'system',
           content:
-            'Eres un experto en SQL. Analiza la consulta SQL, sus resultados esperados y sus resultados reales obtenidos (resultados en formato JSON). Luego, responde en texto plano, sin negrita, natural y conciso. La primera linea debe tener solo un numero del 1 al 100 que representa la calificacion, si solo tiene problemas de optimización pequeños no le restes puntos. Luego, en las siguientes lineas da recomendaciones de corrección u optimización.',
+            'Eres un experto en SQL. Analiza la consulta SQL, sus resultados esperados y los resultados reales, ignora la difencia de formatos entre los resultados esperados y los reales, evalua solo el contenido y no menciones esta diferencia en tu respuesta. Si los resultados contienen un campo "error" con un mensaje de error de base de datos y un campo "status", significa que la consulta falló con ese error; en ese caso basa tu calificación y recomendaciones en el error reportado, no asumas que las tablas no existen. Responde en texto plano, sin negrita, natural y conciso. La primera línea debe tener solo un número del 1 al 100 que representa la calificación. Luego da recomendaciones de corrección u optimización.',
         },
         {
           role: 'user',
