@@ -8,6 +8,7 @@ import type { Course, CourseListResponse } from '../../../courses/domain/course.
 import { enrollmentApi } from '../../../courses/infrastructure/enrollmentApi';
 import type { StudentInCourse, StudentsPageResponse } from '../../../courses/domain/enrollment.types';
 import { evaluationApi } from '../../../evaluationsAndChallenges/infrastructure/evaluationApi';
+import { evaluationChallengeApi } from '../../../evaluationsAndChallenges/infrastructure/evaluationChallengeApi';
 import { reportsApi } from '../../infrastructure/reportsApi';
 import type { StudentSubmissionSummary } from '../../infrastructure/reportsApi';
 import '../styles/ReportsPage.css';
@@ -68,6 +69,10 @@ export function ReportsPage() {
     Record<string, StudentSubmissionSummary | null>
   >({});
   const [evaluationCount, setEvaluationCount] = useState(0);
+  const [challengeCounts, setChallengeCounts] = useState({
+    public: 0,
+    private: 0,
+  });
 
   const [courseLoading, setCourseLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -150,6 +155,7 @@ export function ReportsPage() {
       setStudents([]);
       setStudentSummaries({});
       setEvaluationCount(0);
+      setChallengeCounts({ public: 0, private: 0 });
       return;
     }
 
@@ -193,8 +199,40 @@ export function ReportsPage() {
             [];
 
           setEvaluationCount(Array.isArray(evaluationsPayload) ? evaluationsPayload.length : 0);
+
+          const challengeResponses = await Promise.all(
+            (Array.isArray(evaluationsPayload) ? evaluationsPayload : []).map(
+              async (evaluation: { id: string | number }) => {
+                try {
+                  const response: any = await evaluationChallengeApi.listByEvaluation(
+                    String(evaluation.id),
+                    { page: 1, limit: 100, visibility: 'all' },
+                    authToken,
+                  );
+
+                  return response?.data?.data ?? response?.data ?? response ?? [];
+                } catch {
+                  return [];
+                }
+              },
+            ),
+          );
+
+          const allChallenges = challengeResponses.flat();
+          const publicCount = allChallenges.filter(
+            (challenge: { visibility?: string }) => challenge.visibility === 'PUBLIC',
+          ).length;
+          const privateCount = allChallenges.filter(
+            (challenge: { visibility?: string }) => challenge.visibility === 'PRIVATE',
+          ).length;
+
+          setChallengeCounts({
+            public: publicCount,
+            private: privateCount,
+          });
         } else {
           setEvaluationCount(0);
+          setChallengeCounts({ public: 0, private: 0 });
         }
 
         if (!isProfessor) {
@@ -301,11 +339,13 @@ export function ReportsPage() {
       submissions: totalSubmissions,
       accepted: totalAccepted,
       evaluations: evaluationCount,
+      publicChallenges: challengeCounts.public,
+      privateChallenges: challengeCounts.private,
       averageScore: totalSubmissions > 0 ? Math.round(weightedScore / totalSubmissions) : null,
       averageExecutionTime:
         totalSubmissions > 0 ? Math.round(weightedExecutionTime / totalSubmissions) : null,
     };
-  }, [evaluationCount, studentRows]);
+  }, [challengeCounts.private, challengeCounts.public, evaluationCount, studentRows]);
 
   const scrollCourses = (direction: 'left' | 'right') => {
     const rail = courseRailRef.current;
@@ -363,10 +403,6 @@ export function ReportsPage() {
         <div className="reports-heading">
           <span>Reportes</span>
           <h1>Reportes por curso</h1>
-          <p>
-            Selecciona un curso para consultar las métricas obtenidas desde el
-            backend y el resumen de cada estudiante inscrito.
-          </p>
         </div>
 
         {pageError && <div className="reports-empty-state">{pageError}</div>}
@@ -383,7 +419,6 @@ export function ReportsPage() {
               <div className="reports-panel-header">
                 <div>
                   <h2>Cursos</h2>
-                  <p>Usa las flechas para mover la barra horizontal.</p>
                 </div>
 
                 <div className="reports-carousel-actions">
@@ -424,10 +459,11 @@ export function ReportsPage() {
                         <strong>{course.name}</strong>
                       </div>
 
+                      <p className="reports-course-selector-note">
+                        {course.period}
+                      </p>
+
                       <div className="reports-course-selector-meta">
-                        <span>
-                          {course.period} · {course.group}
-                        </span>
                       </div>
                     </button>
                   );
@@ -441,40 +477,47 @@ export function ReportsPage() {
                   <span className="reports-course-eyebrow">Reporte del curso</span>
                   <h2>{selectedCourse.name}</h2>
                   <p>
-                    {selectedCourse.code} · {selectedCourse.group} · {selectedCourse.period}
+                    {selectedCourse.code} · {selectedCourse.period}
                   </p>
                 </div>
               </div>
-
-              {isAdmin && (
-                <div className="reports-empty-state" style={{ marginBottom: '24px' }}>
-                  Como administrador puedes ver cursos y estudiantes inscritos. Las métricas de envíos se consultan directamente en el backend para profesores.
-                </div>
-              )}
 
               <section className="reports-metrics-grid reports-course-metrics">
                 <article className="reports-metric-card">
                   <span>Estudiantes</span>
                   <strong>{courseMetrics.students}</strong>
-                  <p>Estudiantes inscritos en el curso.</p>
-                </article>
-
-                <article className="reports-metric-card">
-                  <span>Envíos</span>
-                  <strong>{formatNumber(courseMetrics.submissions)}</strong>
-                  <p>Total de soluciones registradas.</p>
-                </article>
-
-                <article className="reports-metric-card">
-                  <span>Aceptados</span>
-                  <strong>{formatNumber(courseMetrics.accepted)}</strong>
-                  <p>Soluciones aceptadas en este curso.</p>
+                  <p>Estudiantes inscritos.</p>
                 </article>
 
                 <article className="reports-metric-card">
                   <span>Evaluaciones</span>
                   <strong>{formatNumber(courseMetrics.evaluations)}</strong>
-                  <p>Evaluaciones registradas en el curso.</p>
+                  <p>Evaluaciones registradas.</p>
+                </article>
+
+                 <article className="reports-metric-card">
+                  <span>Retos públicos</span>
+                  <strong>{formatNumber(courseMetrics.publicChallenges)}</strong>
+                  <p>Retos visibles para estudiantes.</p>
+                </article>
+
+                <article className="reports-metric-card">
+                  <span>Retos privados</span>
+                  <strong>{formatNumber(courseMetrics.privateChallenges)}</strong>
+                  <p>Retos visibles solo para profesor.</p>
+                </article>
+
+
+                <article className="reports-metric-card">
+                  <span>Envíos</span>
+                  <strong>{formatNumber(courseMetrics.submissions)}</strong>
+                  <p>Soluciones registradas.</p>
+                </article>
+
+                <article className="reports-metric-card">
+                  <span>Aceptados</span>
+                  <strong>{formatNumber(courseMetrics.accepted)}</strong>
+                  <p>Soluciones aceptadas.</p>
                 </article>
 
                 <article className="reports-metric-card">
