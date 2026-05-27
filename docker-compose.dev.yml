@@ -7,6 +7,23 @@
 #
 # API opcional en contenedor:
 #   docker compose --env-file .env.dev -f docker-compose.dev.yml --profile full-docker up -d
+#
+# --- Sandbox Docker (contenedores por reto) ---
+# El worker de evaluación levanta contenedores postgres:16 adicionales en el host Docker.
+# Windows (Docker Desktop): DOCKER_HOST=npipe:////./pipe/docker_engine
+# Linux/Mac:                DOCKER_HOST no necesario (socket por defecto)
+# Imagen sandbox:           SANDBOX_POSTGRES_IMAGE=postgres:16 (var de entorno en API)
+# Memoria sandbox:          512 MB por contenedor (SQL_RUNNER_MEMORY_BYTES=536870912)
+# CPU sandbox:              0.5 CPUs (SQL_RUNNER_NANO_CPUS=500000000)
+# TTL sandbox por defecto:  SANDBOX_TTL_DAYS (fallback SANDBOX_DEFAULT_TTL_DAYS)=30 desde aprovisionamiento
+#
+# BullMQ + sandboxes Postgres nombrados:
+# - La API/worker en el HOST usa el socket Docker local (Docker Desktop) para `dockerode`.
+# - Si corrés la API dentro del contenedor `api`, montá el socket (`/var/run/docker.sock`) y
+#   configurá `DOCKER_HOST` / rutas según tu entorno; en Windows/WSL el host suele ser distinto
+#   de `127.0.0.1` visto desde el contenedor para puertos mapeados del sandbox.
+# - Imagen del sandbox: `SANDBOX_POSTGRES_IMAGE` (default `postgres:16` en código).
+# - Bull stalled jobs: `BULL_STALLED_INTERVAL_MS` o `BULLMQ_STALLED_INTERVAL_MS`; locks: `SQL_EVALUATION_LOCK_MS`, `CHALLENGE_SANDBOX_LOCK_MS`.
 
 services:
   postgres:
@@ -68,11 +85,20 @@ services:
       PORT: ${PORT:-3000}
       AI_URL: ${AI_URL:-}
       AI_API_KEY: ${AI_API_KEY:-}
+      # Sandbox Docker: montar el socket del host para que el worker pueda crear contenedores.
+      # En Windows con Docker Desktop usar npipe; en Linux/Mac el socket Unix.
+      DOCKER_HOST: ${DOCKER_HOST:-}
+      SANDBOX_POSTGRES_IMAGE: ${SANDBOX_POSTGRES_IMAGE:-postgres:16}
+      SQL_SANDBOX_DB_HOST: ${SQL_SANDBOX_DB_HOST:-host.docker.internal}
+      SANDBOX_DEFAULT_TTL_DAYS: ${SANDBOX_DEFAULT_TTL_DAYS:-30}
+      SANDBOX_TTL_DAYS: ${SANDBOX_TTL_DAYS:-}
+      BULLMQ_STALLED_INTERVAL_MS: ${BULLMQ_STALLED_INTERVAL_MS:-45000}
     ports:
       - '${API_PORT:-3000}:3000'
     volumes:
       - .:/app
       - api_node_modules:/app/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
         condition: service_healthy

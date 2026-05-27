@@ -1,4 +1,5 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { EnrollmentNotFoundError } from '../../domain/errors/enrollment-not-found.error';
 import { ENROLLMENT_REPOSITORY } from '../../domain/repositories/enrollment.repository.interface';
 import type { IEnrollmentRepository } from '../../domain/repositories/enrollment.repository.interface';
 
@@ -10,9 +11,12 @@ export class DeleteEnrollmentUseCase {
   ) {}
 
   async execute(studentId: string, courseId: string): Promise<void> {
-    const existing = await this.enrollmentRepository.findByCompositeId(studentId, courseId);
+    const existing = await this.enrollmentRepository.findByCompositeId(
+      studentId,
+      courseId,
+    );
     if (!existing) {
-      throw new NotFoundException('La inscripcion no existe');
+      throw new EnrollmentNotFoundError();
     }
     await this.enrollmentRepository.deleteByCompositeId(studentId, courseId);
   }

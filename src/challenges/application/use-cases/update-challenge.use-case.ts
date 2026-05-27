@@ -3,14 +3,15 @@ import { CHALLENGE_REPOSITORY } from '../../domain/repositories/challenge.reposi
 import type { IChallengeRepository } from '../../domain/repositories/challenge.repository.interface';
 import { Challenge } from '../../domain/entities/challenge.entity';
 import { UpdateChallengeDto } from '../dtos/update-challenge.dto';
-import { SqlRunnerService } from '../../../shared/infrastructure/services/sql-runner.service';
+import { SQL_EXECUTION_PORT } from '../../../shared/domain/interfaces/sql-execution.tokens';
+import type { ISqlExecutionPort } from '../../../shared/domain/interfaces/sql-execution.interface';
 
 @Injectable()
 export class UpdateChallengeUseCase {
   constructor(
     @Inject(CHALLENGE_REPOSITORY)
     private readonly challengeRepository: IChallengeRepository,
-    private readonly sqlRunnerService: SqlRunnerService,
+    @Inject(SQL_EXECUTION_PORT) private readonly sqlExecution: ISqlExecutionPort,
   ) {}
 
   async execute(id: string, dto: UpdateChallengeDto): Promise<Challenge> {
@@ -21,14 +22,10 @@ export class UpdateChallengeUseCase {
     }
 
     if (dto.schemaDefinition) {
-      if (dto.seedScript) {
-        await this.sqlRunnerService.runValidation(
-          dto.schemaDefinition,
-          dto.seedScript,
-        );
-      } else {
-        await this.sqlRunnerService.runValidation(dto.schemaDefinition);
-      }
+      await this.sqlExecution.validateSchemaSeed(
+        dto.schemaDefinition,
+        dto.seedScript ?? undefined,
+      );
     }
 
     const data: Partial<Challenge> = {
@@ -41,6 +38,7 @@ export class UpdateChallengeUseCase {
       seedScript: dto.seedScript,
       expectedResult: dto.expectedResult,
       timeLimitMs: dto.timeLimitMs,
+      tags: dto.tags,
     };
 
     return await this.challengeRepository.update(id, data);

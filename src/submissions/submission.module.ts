@@ -1,31 +1,60 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
-import { SubmissionsController } from './infrastructure/http/submissions.controller';
-import { EvaluateSqlUseCase } from './application/use-cases/evaluate-sql.use-case';
-import { AiService } from './infrastructure/services/ai.service';
+import { PrismaModule } from '../prisma/prisma.module';
+import { SharedModule } from '../shared/shared.module';
+import { ChallengesModule } from '../challenges/challenges.module';
+import { SubmissionsController } from './infrastructure/controllers/submissions.controller';
 import { SqlWorker } from './infrastructure/queue/sql.worker';
+import { PrismaSubmissionRepository } from './infrastructure/persistence/prisma-submission.repository';
+import { PrismaSubmissionEligibilityQuery } from './infrastructure/persistence/prisma-submission-eligibility.query';
+import { PrismaSubmissionEvaluationContextQuery } from './infrastructure/persistence/prisma-submission-evaluation.query';
+import { SqlSandboxRunnerService } from './infrastructure/services/sql-sandbox-runner.service';
+import { SubmissionStalledRecoveryService } from './infrastructure/services/submission-stalled-recovery.service';
+import { CreateSubmissionUseCase } from './application/use-cases/create-submission.use-case';
+import { EvaluateSubmissionUseCase } from './application/use-cases/evaluate-submission.use-case';
+import { GetSubmissionByIdUseCase } from './application/use-cases/get-submission-by-id.use-case';
+import { SUBMISSION_REPOSITORY } from './domain/repositories/submission.repository.interface';
+import { SUBMISSION_ELIGIBILITY_QUERY } from './domain/interfaces/submission-eligibility.query.tokens';
+import { SUBMISSION_EVALUATION_CONTEXT_QUERY } from './domain/interfaces/submission-evaluation-context.query.tokens';
+import { SQL_SANDBOX_RUNNER } from './domain/interfaces/sql-sandbox-runner.interface';
 
 @Module({
   imports: [
-    // Registro de la cola específica para este módulo
+    PrismaModule,
+    SharedModule,
+    ChallengesModule,
     BullModule.registerQueue({
       name: 'sql-evaluation',
       defaultJobOptions: {
-        attempts: 2,
-        backoff: 5000,
+        attempts: 4,
+        backoff: { type: 'exponential', delay: 4000 },
       },
     }),
   ],
-  controllers: [SubmissionsController], // Antes era AppController
+  controllers: [SubmissionsController],
   providers: [
-    EvaluateSqlUseCase,
-    SqlWorker, // El procesador que escucha Redis
+    SqlWorker,
+    SqlSandboxRunnerService,
+    SubmissionStalledRecoveryService,
+    CreateSubmissionUseCase,
+    EvaluateSubmissionUseCase,
+    GetSubmissionByIdUseCase,
     {
-      provide: 'IAiProvider', // Token para inyección de dependencia en el Use Case
-      useClass: AiService,
+      provide: SUBMISSION_REPOSITORY,
+      useClass: PrismaSubmissionRepository,
     },
-    EvaluateSqlUseCase,
+    {
+      provide: SUBMISSION_ELIGIBILITY_QUERY,
+      useClass: PrismaSubmissionEligibilityQuery,
+    },
+    {
+      provide: SUBMISSION_EVALUATION_CONTEXT_QUERY,
+      useClass: PrismaSubmissionEvaluationContextQuery,
+    },
+    {
+      provide: SQL_SANDBOX_RUNNER,
+      useExisting: SqlSandboxRunnerService,
+    },
   ],
-  exports: [EvaluateSqlUseCase], // Por si otros módulos necesitan usarlo
 })
 export class SubmissionsModule {}

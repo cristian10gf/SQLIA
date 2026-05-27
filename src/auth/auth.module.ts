@@ -11,6 +11,7 @@ import { ListUsersUseCase } from './application/use-cases/list-users.use-case';
 import { GetUserByIdForAdminUseCase } from './application/use-cases/get-user-by-id-for-admin.use-case';
 import { UpdateUserUseCase } from './application/use-cases/update-user.use-case';
 import { DeleteUserUseCase } from './application/use-cases/delete-user.use-case';
+import { ImportStudentsFromCsvUseCase } from './application/use-cases/import-students-from-csv.use-case';
 
 import { PrismaUserRepository } from './infrastructure/persistence/prisma-user.repository';
 import { BcryptAdapter } from './infrastructure/persistence/bcrypt.adapter';
@@ -107,6 +108,12 @@ import {
       inject: [USER_REPOSITORY],
       useFactory: (userRepo: IUserRepository) =>
         new DeleteUserUseCase(userRepo),
+    },
+    {
+      provide: ImportStudentsFromCsvUseCase,
+      inject: [USER_REPOSITORY, HASHING_SERVICE],
+      useFactory: (userRepo: IUserRepository, hashingSvc: IHashingService) =>
+        new ImportStudentsFromCsvUseCase(userRepo, hashingSvc),
     },
   ],
 })

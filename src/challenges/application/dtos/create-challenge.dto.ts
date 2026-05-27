@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsObject, IsOptional, IsInt, Min } from 'class-validator';
+import { IsString, IsEnum, IsObject, IsOptional, IsInt, Min, IsArray } from 'class-validator';
 import { ChallengeVisibility } from '../../domain/enums/challenge-visibility.enum';
 import { DifficultyLevel } from '../../domain/enums/difficulty-level.enum';
 import { ApiProperty } from '@nestjs/swagger';
@@ -46,4 +46,10 @@ export class CreateChallengeDto {
   @IsInt()
   @Min(100)
   timeLimitMs?: number = 2000;
+
+  @ApiProperty({ example: ['sql', 'joins'], required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[] = [];
 }

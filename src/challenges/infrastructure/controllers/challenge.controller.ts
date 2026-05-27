@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -10,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -31,6 +32,8 @@ import { FindChallengesByCourseUseCase } from '../../application/use-cases/find-
 import { FindChallengesByProfessorUseCase } from '../../application/use-cases/find-challenges-by-professor.use-case';
 import { FindVisibleChallengesByCourseUseCase } from '../../application/use-cases/find-visible-challenges-by-course.use-case';
 import { FindVisibleChallengesByProfessorUseCase } from '../../application/use-cases/find-visible-challenges-by-professor.use-case';
+import { EnqueueChallengeSandboxProvisionUseCase } from '../../application/use-cases/enqueue-challenge-sandbox-provision.use-case';
+import { GetChallengeSandboxUseCase } from '../../application/use-cases/get-challenge-sandbox.use-case';
 
 @ApiTags('Challenges')
 @Controller('challenges')
@@ -45,6 +48,8 @@ export class ChallengeController {
     private readonly findVisibleChallengesByCourseUseCase: FindVisibleChallengesByCourseUseCase,
     private readonly findVisibleChallengesByProfessorUseCase: FindVisibleChallengesByProfessorUseCase,
     private readonly changeChallengeVisibilityUseCase: ChangeChallengeVisibilityUseCase,
+    private readonly enqueueChallengeSandboxProvisionUseCase: EnqueueChallengeSandboxProvisionUseCase,
+    private readonly getChallengeSandboxUseCase: GetChallengeSandboxUseCase,
   ) {}
 
   @Post()
@@ -109,6 +114,63 @@ export class ChallengeController {
     @Query() pagination: PaginationDto,
   ) {
     return await this.findVisibleChallengesByProfessorUseCase.execute(professorId, pagination);
+  }
+
+  @Get(':id/sandbox')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Estado del sandbox Postgres del reto' })
+  async getSandbox(@Param('id', ParseUUIDPipe) id: string) {
+    const row = await this.getChallengeSandboxUseCase.execute(id);
+    const data =
+      row == null
+        ? null
+        : {
+            id: row.id,
+            challengeId: row.challengeId,
+            status: row.status,
+            dockerContainerName: row.dockerContainerName,
+            hostPort: row.hostPort,
+            dbUser: row.dbUser,
+            dbName: row.dbName,
+            connectionHost: row.connectionHost,
+            expiresAt: row.expiresAt,
+            lastError: row.lastError,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt,
+          };
+    return { data };
+  }
+
+  /** Dispara el aprovisionamiento del sandbox (202 Accepted). */
+  @Patch([':id/publish', ':id/sandbox/publish'])
+  @HttpCode(202)
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
+  @ApiOperation({ summary: 'Publicar reto y encolar aprovisionamiento del sandbox' })
+  async publish(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    const result = await this.enqueueChallengeSandboxProvisionUseCase.execute(
+      id,
+      String(user.id),
+      String(user.role),
+    );
+    return { message: 'Aprovisionamiento encolado', jobId: result.jobId };
+  }
+
+  /** Alias explícito para aprovisionamiento manual (dev/testing). */
+  @Post(':id/sandbox/provision')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
+  @ApiOperation({ summary: 'Encolar aprovisionamiento del contenedor sandbox' })
+  async provisionSandbox(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    const result = await this.enqueueChallengeSandboxProvisionUseCase.execute(
+      id,
+      String(user.id),
+      String(user.role),
+    );
+    return { message: 'Aprovisionamiento encolado', jobId: result.jobId };
   }
 
   @Get(':id')

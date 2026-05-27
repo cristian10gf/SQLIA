@@ -35,6 +35,31 @@ async function request<T>(
   return data as T;
 }
 
+async function upload<T>(
+  endpoint: string,
+  formData: FormData,
+  token?: string | null,
+): Promise<T> {
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      data?.message || 'Ocurrió un error al comunicarse con el servidor.';
+
+    throw new Error(Array.isArray(message) ? message.join(', ') : message);
+  }
+
+  return data as T;
+}
+
 export const apiClient = {
   get: <T>(endpoint: string, token?: string | null) =>
     request<T>(endpoint, { method: 'GET', token }),
@@ -47,4 +72,7 @@ export const apiClient = {
 
   delete: <T>(endpoint: string, token?: string | null) =>
     request<T>(endpoint, { method: 'DELETE', token }),
+
+  upload: <T>(endpoint: string, formData: FormData, token?: string | null) =>
+    upload<T>(endpoint, formData, token),
 };

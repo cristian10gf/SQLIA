@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ChallengeVisibility } from '@prisma/client';
+import { ChallengeStatus, ChallengeVisibility } from '@prisma/client';
 import { Challenge } from '../../../challenges/domain/entities/challenge.entity';
 import { ChallengeMapper } from '../../../challenges/infrastructure/mappers/challenge.mapper';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -54,7 +54,12 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
       evaluationId,
       ...(visibility === undefined
         ? {}
-        : { challenge: { visibility: visibility ? ChallengeVisibility.PUBLIC : ChallengeVisibility.PRIVATE } }),
+        : {
+            challenge: {
+              visibility: visibility ? ChallengeVisibility.PUBLIC : ChallengeVisibility.PRIVATE,
+              ...(visibility ? { status: ChallengeStatus.PUBLISHED } : {}),
+            },
+          }),
     };
 
     const [models, total] = await Promise.all([
@@ -71,7 +76,14 @@ export class PrismaEvaluationChallengeRepository implements IEvaluationChallenge
     ]);
 
     return {
-      data: models.map((model) => ChallengeMapper.toDomain(model.challenge)),
+      data: models.map((model) => {
+        const domainChallenge = ChallengeMapper.toDomain(model.challenge);
+        return {
+          ...domainChallenge,
+          points: model.points,
+          orderIndex: model.orderIndex,
+        };
+      }) as unknown as Challenge[],
       total,
     };
   }

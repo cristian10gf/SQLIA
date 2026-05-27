@@ -1,8 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
+import { ChallengeStatus, ChallengeVisibility } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { ChallengeVisibility } from '@prisma/client';
 import { Challenge } from '../../domain/entities/challenge.entity';
 import { IChallengeRepository } from '../../domain/repositories/challenge.repository.interface';
+import {
+  ChallengeMapper,
+  ChallengePersistenceRow,
+} from '../mappers/challenge.mapper';
 
 @Injectable()
 export class PrismaChallengeRepository implements IChallengeRepository {
@@ -23,11 +28,12 @@ export class PrismaChallengeRepository implements IChallengeRepository {
         seedScript: challenge.seedScript,
         expectedResult: challenge.expectedResult,
         timeLimitMs: challenge.timeLimitMs,
+        tags: challenge.tags,
         status: challenge.status,
       },
     });
 
-    return this.mapToDomain(savedModel);
+    return ChallengeMapper.toDomain(savedModel);
   }
 
   async findById(id: string): Promise<Challenge | null> {
@@ -35,7 +41,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
       where: { id },
     });
 
-    return model ? this.mapToDomain(model) : null;
+    return model ? ChallengeMapper.toDomain(model) : null;
   }
 
   async findAll(skip: number, take: number): Promise<{ data: Challenge[]; total: number }> {
@@ -49,7 +55,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
     ]);
 
     return {
-      data: models.map((model) => this.mapToDomain(model)),
+      data: models.map((model) => ChallengeMapper.toDomain(model)),
       total,
     };
   }
@@ -64,9 +70,10 @@ export class PrismaChallengeRepository implements IChallengeRepository {
     const where = {
       courseId,
       ...(visibility === undefined ? {} : { visibility: visibility ? ChallengeVisibility.PUBLIC : ChallengeVisibility.PRIVATE }),
+      ...(maskExpectedResult ? { status: ChallengeStatus.PUBLISHED } : {}),
     };
 
-    const select: any = {
+    const select: Prisma.ChallengeSelect = {
       id: true,
       createdBy: true,
       courseId: true,
@@ -78,14 +85,13 @@ export class PrismaChallengeRepository implements IChallengeRepository {
       schemaDefinition: true,
       seedScript: true,
       timeLimitMs: true,
+      tags: true,
       status: true,
       createdAt: true,
     };
-
     if (!maskExpectedResult) {
       select.expectedResult = true;
     }
-
     const [models, total] = await Promise.all([
       this.prisma.challenge.findMany({
         where,
@@ -98,7 +104,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
     ]);
 
     return {
-      data: models.map((model) => this.mapToDomain(model)),
+      data: models.map((model) => ChallengeMapper.toDomain(model as ChallengePersistenceRow)),
       total,
     };
   }
@@ -113,9 +119,10 @@ export class PrismaChallengeRepository implements IChallengeRepository {
     const where = {
       createdBy: professorId,
       ...(visibility === undefined ? {} : { visibility: visibility ? ChallengeVisibility.PUBLIC : ChallengeVisibility.PRIVATE }),
+      ...(maskExpectedResult ? { status: ChallengeStatus.PUBLISHED } : {}),
     };
 
-    const select: any = {
+    const select: Prisma.ChallengeSelect = {
       id: true,
       createdBy: true,
       courseId: true,
@@ -127,6 +134,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
       schemaDefinition: true,
       seedScript: true,
       timeLimitMs: true,
+      tags: true,
       status: true,
       createdAt: true,
     };
@@ -147,7 +155,7 @@ export class PrismaChallengeRepository implements IChallengeRepository {
     ]);
 
     return {
-      data: models.map((model) => this.mapToDomain(model)),
+      data: models.map((model) => ChallengeMapper.toDomain(model as ChallengePersistenceRow)),
       total,
     };
   }
@@ -166,10 +174,11 @@ export class PrismaChallengeRepository implements IChallengeRepository {
         seedScript: challenge.seedScript,
         expectedResult: challenge.expectedResult,
         timeLimitMs: challenge.timeLimitMs,
+        ...(challenge.tags !== undefined ? { tags: challenge.tags } : {}),
       },
     });
 
-    return this.mapToDomain(updated);
+    return ChallengeMapper.toDomain(updated);
   }
 
   async updateVisibility(id: string, visibility: ChallengeVisibility): Promise<Challenge> {
@@ -178,31 +187,12 @@ export class PrismaChallengeRepository implements IChallengeRepository {
       data: { visibility },
     });
 
-    return this.mapToDomain(updated);
+    return ChallengeMapper.toDomain(updated);
   }
 
   async delete(id: string): Promise<void> {
     await this.prisma.challenge.delete({
       where: { id },
     });
-  }
-
-  private mapToDomain(model: any): Challenge {
-    return new Challenge(
-      model.id,
-      model.createdBy,
-      model.courseId,
-      model.title,
-      model.description,
-      model.difficulty,
-      model.visibility,
-      model.databaseEngine,
-      model.schemaDefinition,
-      model.seedScript,
-      model.expectedResult ?? {},
-      model.timeLimitMs,
-      model.status,
-      model.createdAt,
-    );
   }
 }

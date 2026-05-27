@@ -83,11 +83,29 @@ cp .env.prod.example .env.prod
 npm run compose:prod
 ```
 
-### 3. Configurar base de datos y Prisma
+### 3. Variables de entorno (desarrollo local)
 
-Use `.env.dev` (o `.env` si preferís un solo archivo local) con `DATABASE_URL` coherente con Postgres; el ejemplo está en `.env.dev.example`.
+**Fuente única:** `.env.dev` (copiá desde `.env.dev.example`). No commitees `.env.dev`.
 
-Nest y Prisma cargan por defecto el archivo `.env` en la raíz (no `.env.dev`). En desarrollo podés copiar el ejemplo: `cp .env.dev.example .env` o mantener ambos sincronizados.
+| Uso | Cómo carga variables |
+|-----|----------------------|
+| `npm run db:*` | `--env-file .env.dev` en Docker Compose |
+| `npm run start:dev` | `dotenv-cli -e .env.dev` |
+| Nest (`ConfigModule`) | `.env.dev` primero, `.env` como respaldo |
+| Prisma CLI | `prisma.config.ts` lee `.env.dev` luego `.env` |
+
+Copiá a `.env` solo si alguna herramienta externa lo exige; no hace falta duplicar para el flujo habitual.
+
+Variables clave para sandbox e IA (ver `.env.dev.example`):
+
+- `DATABASE_URL` — Postgres local (Compose)
+- `DIRECT_URL` — opcional; Prisma migrate si usás pooler
+- `DOCKER_HOST` — Windows Docker Desktop: `npipe:////./pipe/docker_engine`
+- `SQL_SANDBOX_DB_HOST` — `127.0.0.1` en host; `host.docker.internal` si la API corre en contenedor
+- `SANDBOX_POSTGRES_IMAGE`, `SANDBOX_DEFAULT_TTL_DAYS` — contenedores efímeros por reto
+- `AI_URL`, `AI_API_KEY` — evaluación con IA (opcional)
+
+### 4. Configurar base de datos y Prisma
 
 ```bash
 # Generar el cliente fuertemente tipado de Prisma
@@ -97,7 +115,7 @@ npx prisma generate
 npx prisma migrate dev
 ```
 
-### 4. Ejecución del backend
+### 5. Ejecución del backend
 
 ```bash
 # Modo desarrollo con recarga automática
