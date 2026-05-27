@@ -126,6 +126,45 @@ npm run build
 npm run start:prod
 ```
 
+### Ejecutar el frontend 
+
+- Entrar al directorio del frontend:
+
+```bash
+cd frontend
+```
+
+- Instalar dependencias:
+
+```bash
+npm install
+```
+
+- Levantar el servidor de desarrollo (Vite):
+
+```bash
+npm run dev
+```
+
+Por defecto Vite sirve la app en `http://localhost:5173`.
+
+Si tu API corre en otro host/puerto, define la variable de entorno `VITE_API_URL` dentro de `frontend/.env` o exportándola al ejecutar. Ejemplo:
+
+```bash
+# Unix/macOS
+VITE_API_URL=http://localhost:3000 npm run dev
+
+# Windows (PowerShell)
+$env:VITE_API_URL = 'http://localhost:3000'; npm run dev
+```
+
+- Construir para producción y previsualizar:
+
+```bash
+npm run build
+npm run preview
+```
+
 ## 🧪 Testing
 
 Gracias a la Arquitectura Limpia modularizada, todas las lógicas Core (Dominio y Casos de Uso) pueden ser testeadas unitariamente aislando dependencias volátiles:
