@@ -12,6 +12,7 @@ interface ChallengeCardProps {
   evaluation: Evaluation;
   isProfessor: boolean;
   isStudent: boolean;
+  isAdmin?: boolean;
   token: string;
   sandboxStatus: SandboxStatusValue | null | undefined;
   submissionsUsed?: number;
@@ -19,6 +20,7 @@ interface ChallengeCardProps {
   onEdit: (challenge: Challenge) => void;
   onDelete: (challengeId: number | string) => void;
   onStartChallenge: (evaluation: Evaluation, challenge: Challenge) => void;
+  onViewSubmissions?: (challenge: Challenge) => void;
 }
 
 export function ChallengeCard({
@@ -26,6 +28,7 @@ export function ChallengeCard({
   evaluation,
   isProfessor,
   isStudent,
+  isAdmin,
   token,
   sandboxStatus,
   submissionsUsed,
@@ -33,6 +36,7 @@ export function ChallengeCard({
   onEdit,
   onDelete,
   onStartChallenge,
+  onViewSubmissions,
 }: ChallengeCardProps) {
   const available = isChallengeAvailableForStudent(evaluation, challenge);
   const maxReached =
@@ -59,6 +63,16 @@ export function ChallengeCard({
         </div>
 
         <div className="eval-inline-actions">
+          {(isProfessor || isAdmin) && onViewSubmissions && (
+            <button
+              type="button"
+              className="eval-secondary-btn eval-small-btn"
+              onClick={() => onViewSubmissions(challenge)}
+            >
+              Ver entregas
+            </button>
+          )}
+
           {isProfessor && (
             <>
               <button type="button" className="eval-secondary-btn eval-small-btn" onClick={() => onEdit(challenge)}>

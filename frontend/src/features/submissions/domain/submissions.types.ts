@@ -47,3 +47,26 @@ export type LeaderboardEntry = {
   challengesSolved: number;
   submissionCount: number;
 };
+
+export type SubmissionDetail = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  challengeId: string;
+  evaluationId: string | null;
+  query: string;
+  status: SubmissionStatus;
+  score: number;
+  executionTimeMs: number | null;
+  resultJson: {
+    status?: SubmissionStatus;
+    score?: number;
+    executionTimeMs?: number;
+    engine?: string;
+    tests?: SubmissionTest[];
+    error?: string;
+    aiRecommendations?: string;
+  } | null;
+  createdAt: string;
+};

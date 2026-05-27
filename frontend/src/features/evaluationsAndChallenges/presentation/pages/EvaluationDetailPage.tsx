@@ -15,6 +15,7 @@ import { ChallengeModal } from '../components/ChallengeModal';
 import { EvaluationModal } from '../components/EvaluationModal';
 import { StudentAttemptModal } from '../components/StudentAttemptModal';
 import { LeaderboardModal } from '../components/LeaderboardModal';
+import { ChallengeSubmissionsModal } from '../components/ChallengeSubmissionsModal';
 import { formatDate, getSessionUser } from '../utils/evaluationUtils';
 import { submissionsApi } from '../../../submissions/infrastructure/submissionsApi';
 import '../styles/EvaluationsAndChallengesPage.css';
@@ -52,6 +53,7 @@ export default function EvaluationDetailPage() {
 
   const [mySubmissionCount, setMySubmissionCount] = useState(0);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [viewingSubmissionsChallenge, setViewingSubmissionsChallenge] = useState<Challenge | null>(null);
 
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(
@@ -359,6 +361,7 @@ export default function EvaluationDetailPage() {
                   evaluation={evaluation!}
                   isProfessor={isProfessor}
                   isStudent={isStudent}
+                  isAdmin={isAdmin}
                   token={token!}
                   sandboxStatus={sandboxStatuses[ch.id.toString()]}
                   submissionsUsed={isStudent ? mySubmissionCount : undefined}
@@ -366,6 +369,7 @@ export default function EvaluationDetailPage() {
                   onEdit={handleOpenEditChallenge}
                   onDelete={handleDeleteChallenge}
                   onStartChallenge={handleStartChallenge}
+                  onViewSubmissions={(ch) => setViewingSubmissionsChallenge(ch)}
                 />
               ))}
             </div>
@@ -415,6 +419,16 @@ export default function EvaluationDetailPage() {
           evaluationTitle={evaluation.title}
           token={token!}
           onClose={() => setShowLeaderboard(false)}
+        />
+      )}
+
+      {viewingSubmissionsChallenge && evaluation && (
+        <ChallengeSubmissionsModal
+          evaluationId={evaluation.id.toString()}
+          challengeId={viewingSubmissionsChallenge.id.toString()}
+          challengeTitle={viewingSubmissionsChallenge.title}
+          token={token!}
+          onClose={() => setViewingSubmissionsChallenge(null)}
         />
       )}
     </DashboardLayout>

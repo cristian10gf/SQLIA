@@ -1,5 +1,5 @@
 import { apiClient } from '../../../shared/infrastructure/http/apiClient';
-import type { Submission, SubmissionResult, LeaderboardEntry } from '../domain/submissions.types';
+import type { Submission, SubmissionResult, LeaderboardEntry, SubmissionDetail } from '../domain/submissions.types';
 
 export const submissionsApi = {
   send(submission: Submission, token: string) {
@@ -16,5 +16,12 @@ export const submissionsApi = {
 
   getLeaderboard(evaluationId: string, token: string): Promise<LeaderboardEntry[]> {
     return apiClient.get<LeaderboardEntry[]>(`/submissions/leaderboard/${evaluationId}`, token);
+  },
+
+  getByEvaluationAndChallenge(evaluationId: string, challengeId: string, token: string): Promise<SubmissionDetail[]> {
+    return apiClient.get<SubmissionDetail[]>(
+      `/submissions/by-evaluation/${evaluationId}?challengeId=${challengeId}`,
+      token,
+    );
   },
 };
