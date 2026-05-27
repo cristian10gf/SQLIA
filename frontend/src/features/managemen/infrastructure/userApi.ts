@@ -10,6 +10,17 @@ export type ApiUser = {
   createdAt?: string;
 };
 
+export type ApiUserDetail = ApiUser & {
+  enrollments?: { courseId: string; courseName?: string; enrolledAt?: string }[];
+};
+
+export type ImportCsvResult = {
+  total: number;
+  created: number;
+  alreadyExisted: number;
+  errors: string[];
+};
+
 type UserListResponse = {
   meta: { total: number; page: number; lastPage: number };
   data: ApiUser[];
@@ -33,6 +44,20 @@ export const userApi = {
   findAll(token: string, page = 1, limit = 100) {
     return apiClient.get<UserListResponse>(
       `/users?page=${page}&limit=${limit}`,
+      token,
+    );
+  },
+
+  findById(userId: string, token: string) {
+    return apiClient.get<{ data: ApiUserDetail }>(`/users/${userId}`, token);
+  },
+
+  importCsv(file: File, token: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.upload<{ message: string; data: ImportCsvResult }>(
+      '/users/import-csv',
+      formData,
       token,
     );
   },
