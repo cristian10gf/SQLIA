@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authStorage } from '../../../auth/infrastructure/authStorage';
 import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
@@ -7,6 +7,7 @@ import { courseApi } from '../../../courses/infrastructure/courseApi';
 import type { Course, CourseListResponse } from '../../../courses/domain/course.types';
 import { enrollmentApi } from '../../../courses/infrastructure/enrollmentApi';
 import type { StudentInCourse, StudentsPageResponse } from '../../../courses/domain/enrollment.types';
+import { evaluationApi } from '../../../evaluationsAndChallenges/infrastructure/evaluationApi';
 import { reportsApi } from '../../infrastructure/reportsApi';
 import type { StudentSubmissionSummary } from '../../infrastructure/reportsApi';
 import '../styles/ReportsPage.css';
@@ -66,11 +67,13 @@ export function ReportsPage() {
   const [studentSummaries, setStudentSummaries] = useState<
     Record<string, StudentSubmissionSummary | null>
   >({});
+  const [evaluationCount, setEvaluationCount] = useState(0);
 
   const [courseLoading, setCourseLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [pageError, setPageError] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
+  const courseRailRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!token || !user || !role) {
@@ -146,6 +149,7 @@ export function ReportsPage() {
     if (!token || !selectedCourse) {
       setStudents([]);
       setStudentSummaries({});
+      setEvaluationCount(0);
       return;
     }
 
@@ -174,6 +178,24 @@ export function ReportsPage() {
         }
 
         setStudents(loadedStudents);
+
+        if (isProfessor) {
+          const evaluationsResponse: any = await evaluationApi.listForProfessor(
+            currentCourse.id,
+            { page: 1, limit: 100, visibility: 'all' },
+            authToken,
+          );
+
+          const evaluationsPayload =
+            evaluationsResponse?.data?.data ??
+            evaluationsResponse?.data ??
+            evaluationsResponse ??
+            [];
+
+          setEvaluationCount(Array.isArray(evaluationsPayload) ? evaluationsPayload.length : 0);
+        } else {
+          setEvaluationCount(0);
+        }
 
         if (!isProfessor) {
           setStudentSummaries({});
@@ -278,11 +300,27 @@ export function ReportsPage() {
       students: studentRows.length,
       submissions: totalSubmissions,
       accepted: totalAccepted,
+      evaluations: evaluationCount,
       averageScore: totalSubmissions > 0 ? Math.round(weightedScore / totalSubmissions) : null,
       averageExecutionTime:
         totalSubmissions > 0 ? Math.round(weightedExecutionTime / totalSubmissions) : null,
     };
-  }, [studentRows]);
+  }, [evaluationCount, studentRows]);
+
+  const scrollCourses = (direction: 'left' | 'right') => {
+    const rail = courseRailRef.current;
+
+    if (!rail) {
+      return;
+    }
+
+    const amount = Math.max(240, rail.clientWidth * 0.8);
+
+    rail.scrollBy({
+      left: direction === 'left' ? -amount : amount,
+      behavior: 'smooth',
+    });
+  };
 
   const handleLogout = () => {
     authStorage.clearSession();
@@ -341,12 +379,35 @@ export function ReportsPage() {
           </div>
         ) : (
           <section className="reports-workspace">
-            <aside className="reports-list-panel">
+            <div className="reports-list-panel reports-list-panel-horizontal">
               <div className="reports-panel-header">
-                <h2>Cursos</h2>
+                <div>
+                  <h2>Cursos</h2>
+                  <p>Usa las flechas para mover la barra horizontal.</p>
+                </div>
+
+                <div className="reports-carousel-actions">
+                  <button
+                    type="button"
+                    className="reports-carousel-button"
+                    onClick={() => scrollCourses('left')}
+                    aria-label="Desplazar cursos a la izquierda"
+                  >
+                    ‹
+                  </button>
+
+                  <button
+                    type="button"
+                    className="reports-carousel-button"
+                    onClick={() => scrollCourses('right')}
+                    aria-label="Desplazar cursos a la derecha"
+                  >
+                    ›
+                  </button>
+                </div>
               </div>
 
-              <div className="reports-course-selector-list">
+              <div className="reports-course-selector-list" ref={courseRailRef}>
                 {courses.map((course) => {
                   const isSelected = selectedCourse.id === course.id;
 
@@ -364,16 +425,15 @@ export function ReportsPage() {
                       </div>
 
                       <div className="reports-course-selector-meta">
-                        <span>{course.code}</span>
-                        <span>{course.group}</span>
-                        <span>{course.period}</span>
-                        <span>{course.professorId}</span>
+                        <span>
+                          {course.period} · {course.group}
+                        </span>
                       </div>
                     </button>
                   );
                 })}
               </div>
-            </aside>
+            </div>
 
             <article className="reports-detail-panel">
               <div className="reports-detail-header">
@@ -409,6 +469,12 @@ export function ReportsPage() {
                   <span>Aceptados</span>
                   <strong>{formatNumber(courseMetrics.accepted)}</strong>
                   <p>Soluciones aceptadas en este curso.</p>
+                </article>
+
+                <article className="reports-metric-card">
+                  <span>Evaluaciones</span>
+                  <strong>{formatNumber(courseMetrics.evaluations)}</strong>
+                  <p>Evaluaciones registradas en el curso.</p>
                 </article>
 
                 <article className="reports-metric-card">
@@ -462,7 +528,6 @@ export function ReportsPage() {
                           <tr key={student.student.id}>
                             <td>
                               <strong>{student.student.fullName}</strong>
-                              <span>{student.student.id}</span>
                             </td>
                             <td>{student.student.email}</td>
                             <td>{formatNumber(student.summary?.total)}</td>
