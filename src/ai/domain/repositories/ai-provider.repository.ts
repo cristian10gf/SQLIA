@@ -4,6 +4,9 @@ export interface IAiProvider {
     expected: string,
     results: string,
   ): Promise<string>;
-  generateRandomData(schema: string, prompt: string): Promise<string>;
-  generateChallenge(prompt: string): Promise<string>;
+  generateRandomData(
+    schema: string,
+    prompt: string,
+  ): Promise<{ result: string }>;
+  generateChallenge(prompt: string): Promise<{ result: string }>;
 }

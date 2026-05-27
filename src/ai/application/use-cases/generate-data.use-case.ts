@@ -8,7 +8,7 @@ export class GenerateDataUseCase {
     @Inject('IAiProvider') private readonly aiProvider: IAiProvider,
   ) {}
 
-  async execute(dto: GenerateDataDto): Promise<string> {
+  async execute(dto: GenerateDataDto): Promise<{ result: string }> {
     return await this.aiProvider.generateRandomData(dto.schema, dto.prompt);
   }
 }

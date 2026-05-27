@@ -1,14 +1,184 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model User {
+  id                 String       @id @default(uuid()) @db.Uuid
+  email              String       @unique
+  password           String
+  fullName           String       @map("full_name")
+  role               UserRole
+  createdAt          DateTime     @default(now()) @map("created_at")
+  challenges         Challenge[]  @relation("ChallengeCreator")
+  coursesAsProfessor Course[]     @relation("CourseProfessor")
+  enrollments        Enrollment[]
+  evaluations        Evaluation[] @relation("EvaluationCreator")
+  submissions        Submission[]
+
+  @@index([role], map: "idx_user_role")
+  @@map("users")
+}
+
+model Course {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  code        String       @unique
+  period      String
+  group       String?
+  professorId String       @map("professor_id") @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at")
+  challenges  Challenge[]
+  professor   User         @relation("CourseProfessor", fields: [professorId], references: [id])
+  enrollments Enrollment[]
+  evaluations Evaluation[]
+
+  @@index([professorId], map: "idx_course_professor")
+  @@map("courses")
+}
+
+model Enrollment {
+  studentId  String   @map("student_id") @db.Uuid
+  courseId   String   @map("course_id") @db.Uuid
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+  course     Course   @relation(fields: [courseId], references: [id])
+  student    User     @relation(fields: [studentId], references: [id])
+
+  @@id([courseId, studentId])
+  @@map("enrollments")
+}
+
+model Challenge {
+  id               String                @id @default(uuid()) @db.Uuid
+  createdBy        String                @map("created_by") @db.Uuid
+  title            String
+  description      String
+  difficulty       DifficultyLevel
+  visibility       ChallengeVisibility   @default(PRIVATE)
+  databaseEngine   String                @default("PostgreSQL") @map("database_engine")
+  schemaDefinition String                @map("schema_definition")
+  seedScript       String?               @map("seed_script")
+  expectedResult   Json                  @map("expected_result")
+  timeLimitMs      Int                   @default(2000) @map("time_limit_ms")
+  status           ChallengeStatus       @default(DRAFT)
+  createdAt        DateTime              @default(now()) @map("created_at")
+  courseId         String                @map("course_id") @db.Uuid
+  tags             String[]              @default([])
+  sandbox          ChallengeSandbox?
+  course           Course                @relation(fields: [courseId], references: [id])
+  creator          User                  @relation("ChallengeCreator", fields: [createdBy], references: [id])
+  dataGenConfigs   DataGenConfig[]
+  evaluations      EvaluationChallenge[]
+  submissions      Submission[]
+
+  @@index([visibility], map: "idx_challenge_visibility")
+  @@index([courseId], map: "idx_challenge_course")
+  @@map("challenges")
+}
+
+/// *
+///  * Sandbox Docker por reto (1:1 con Challenge).
+///  *
+///  * expiresAt: máximo `endDate` entre evaluaciones que incluyen el reto vía `EvaluationChallenge`.
+///  * Si no hay evaluaciones, el worker usa `SANDBOX_TTL_DAYS` (o `SANDBOX_DEFAULT_TTL_DAYS`)
+///  * desde el momento del aprovisionamiento.
+model ChallengeSandbox {
+  id                  String                 @id @default(uuid()) @db.Uuid
+  challengeId         String                 @unique @map("challenge_id") @db.Uuid
+  status              ChallengeSandboxStatus @default(PENDING)
+  dockerContainerName String?                @map("docker_container_name")
+  hostPort            Int?                   @map("host_port")
+  dbUser              String?                @map("db_user")
+  dbPassword          String?                @map("db_password")
+  dbName              String?                @map("db_name")
+  /// * Host desde el que los workers conectan (p. ej. 127.0.0.1 con puerto mapeado).
+  connectionHost      String?                @map("connection_host")
+  expiresAt           DateTime?              @map("expires_at")
+  lastError           String?                @map("last_error")
+  createdAt           DateTime               @default(now()) @map("created_at")
+  updatedAt           DateTime               @updatedAt @map("updated_at")
+  challenge           Challenge              @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([status], map: "idx_challenge_sandbox_status")
+  @@map("challenge_sandboxes")
+}
+
+model DataGenConfig {
+  id          String    @id @default(uuid()) @db.Uuid
+  challengeId String    @map("challenge_id") @db.Uuid
+  tableName   String    @map("table_name")
+  rowCount    Int       @map("row_count")
+  configJson  Json      @map("config_json")
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+
+  @@map("data_gen_configs")
+}
+
+model Evaluation {
+  id              String                @id @default(uuid()) @db.Uuid
+  courseId        String                @map("course_id") @db.Uuid
+  title           String
+  description     String?
+  startDate       DateTime              @map("start_date")
+  endDate         DateTime              @map("end_date")
+  durationMinutes Int                   @map("duration_minutes")
+  maxAttempts     Int                   @default(1) @map("max_attempts")
+  isVisible       Boolean               @default(false) @map("is_visible")
+  createdBy       String                @map("created_by") @db.Uuid
+  challenges      EvaluationChallenge[]
+  course          Course                @relation(fields: [courseId], references: [id])
+  creator         User                  @relation("EvaluationCreator", fields: [createdBy], references: [id])
+  submissions     Submission[]
+
+  @@index([courseId], map: "idx_evaluation_course")
+  @@map("evaluations")
+}
+
+model EvaluationChallenge {
+  evaluationId String     @map("evaluation_id") @db.Uuid
+  challengeId  String     @map("challenge_id") @db.Uuid
+  orderIndex   Int?       @map("order_index")
+  points       Int        @default(10)
+  challenge    Challenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id])
+
+  @@id([evaluationId, challengeId])
+  @@map("evaluation_challenges")
+}
+
+model Submission {
+  id              String            @id @default(uuid()) @db.Uuid
+  studentId       String            @map("student_id") @db.Uuid
+  challengeId     String            @map("challenge_id") @db.Uuid
+  evaluationId    String?           @map("evaluation_id") @db.Uuid
+  query           String
+  status          SubmissionStatus  @default(QUEUED)
+  executionTimeMs Int?              @map("execution_time_ms")
+  score           Decimal?          @default(0) @db.Decimal
+  createdAt       DateTime          @default(now()) @map("created_at")
+  resultJson      Json?             @map("result_json")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  recommendation  AiRecommendation?
+  challenge       Challenge         @relation(fields: [challengeId], references: [id])
+  evaluation      Evaluation?       @relation(fields: [evaluationId], references: [id])
+  student         User              @relation(fields: [studentId], references: [id])
+
+  @@index([studentId], map: "idx_submission_student")
+  @@index([challengeId], map: "idx_submission_challenge")
+  @@map("submissions")
+}
+
+model AiRecommendation {
+  id           String     @id @default(uuid()) @db.Uuid
+  submissionId String     @unique @map("submission_id") @db.Uuid
+  analysisText String     @map("analysis_text")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  submission   Submission @relation(fields: [submissionId], references: [id])
+
+  @@map("ai_recommendations")
 }
 
 enum UserRole {
@@ -18,8 +188,8 @@ enum UserRole {
 }
 
 enum ChallengeVisibility {
-  PUBLIC    // Disponible para cualquier estudiante
-  PRIVATE   // Solo disponible dentro de un curso específico
+  PUBLIC
+  PRIVATE
 }
 
 enum ChallengeStatus {
@@ -39,7 +209,7 @@ enum SubmissionStatus {
   OPTIMIZATION_REQUIRED
 }
 
-/** Estado del contenedor Postgres nombrado por reto (sandbox de larga duración). */
+/// * Estado del contenedor Postgres nombrado por reto (sandbox de larga duración).
 enum ChallengeSandboxStatus {
   PENDING
   PROVISIONING
@@ -52,194 +222,4 @@ enum DifficultyLevel {
   EASY
   MEDIUM
   HARD
-}
-
-model User {
-  id        String   @id @default(uuid()) @db.Uuid
-  email     String   @unique
-  password  String
-  fullName  String   @map("full_name")
-  role      UserRole
-  createdAt DateTime @default(now()) @map("created_at")
-
-  coursesAsProfessor Course[]     @relation("CourseProfessor")
-  enrollments        Enrollment[]
-  challenges         Challenge[]  @relation("ChallengeCreator")
-  submissions        Submission[]
-  evaluations        Evaluation[] @relation("EvaluationCreator")
-
-  @@map("users")
-  @@index([role], name: "idx_user_role")
-}
-
-model Course {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String
-  code        String   @unique
-  period      String
-  group       String?
-  professorId String   @map("professor_id") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  professor   User         @relation("CourseProfessor", fields: [professorId], references: [id])
-  enrollments Enrollment[]
-  evaluations Evaluation[]
-  challenges  Challenge[]
-
-  @@index([professorId], name: "idx_course_professor")
-  @@map("courses")
-}
-
-model Enrollment {
-  studentId  String   @map("student_id") @db.Uuid
-  courseId   String   @map("course_id") @db.Uuid
-  enrolledAt DateTime @default(now()) @map("enrolled_at")
-
-  student User   @relation(fields: [studentId], references: [id])
-  course  Course @relation(fields: [courseId], references: [id])
-
-  @@id([courseId, studentId])
-  @@map("enrollments")
-}
-
-model Challenge {
-  id               String              @id @default(uuid()) @db.Uuid
-  createdBy        String              @map("created_by") @db.Uuid
-  courseId         String              @map("course_id") @db.Uuid
-  title            String
-  description      String
-  difficulty       DifficultyLevel
-  visibility       ChallengeVisibility @default(PRIVATE)
-  databaseEngine   String              @default("PostgreSQL") @map("database_engine")
-  schemaDefinition String              @map("schema_definition")
-  seedScript       String?             @map("seed_script")
-  expectedResult   Json                @map("expected_result")
-  timeLimitMs      Int                 @default(2000) @map("time_limit_ms")
-  tags             String[]            @default([])
-  status           ChallengeStatus     @default(DRAFT)
-  createdAt        DateTime            @default(now()) @map("created_at")
-
-  creator        User                  @relation("ChallengeCreator", fields: [createdBy], references: [id])
-  course         Course                @relation(fields: [courseId], references: [id])
-  dataGenConfigs DataGenConfig[]
-  evaluations    EvaluationChallenge[]
-  submissions    Submission[]
-  sandbox        ChallengeSandbox?
-
-  @@index([visibility], name: "idx_challenge_visibility")
-  @@index([courseId], name: "idx_challenge_course")
-  @@map("challenges")
-}
-
-/**
- * Sandbox Docker por reto (1:1 con Challenge).
- *
- * expiresAt: máximo `endDate` entre evaluaciones que incluyen el reto vía `EvaluationChallenge`.
- * Si no hay evaluaciones, el worker usa `SANDBOX_TTL_DAYS` (o `SANDBOX_DEFAULT_TTL_DAYS`)
- * desde el momento del aprovisionamiento.
- */
-model ChallengeSandbox {
-  id                   String                 @id @default(uuid()) @db.Uuid
-  challengeId          String                 @unique @map("challenge_id") @db.Uuid
-  status               ChallengeSandboxStatus @default(PENDING)
-  dockerContainerName  String?                @map("docker_container_name")
-  hostPort             Int?                   @map("host_port")
-  dbUser               String?                @map("db_user")
-  dbPassword           String?                @map("db_password")
-  dbName               String?                @map("db_name")
-  /** Host desde el que los workers conectan (p. ej. 127.0.0.1 con puerto mapeado). */
-  connectionHost       String?                @map("connection_host")
-  expiresAt            DateTime?              @map("expires_at")
-  lastError            String?                @map("last_error")
-  createdAt            DateTime               @default(now()) @map("created_at")
-  updatedAt            DateTime               @updatedAt @map("updated_at")
-
-  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-
-  @@index([status], name: "idx_challenge_sandbox_status")
-  @@map("challenge_sandboxes")
-}
-
-model DataGenConfig {
-  id          String @id @default(uuid()) @db.Uuid
-  challengeId String @map("challenge_id") @db.Uuid
-  tableName   String @map("table_name")
-  rowCount    Int    @map("row_count")
-  configJson  Json   @map("config_json")
-
-  challenge Challenge @relation(fields: [challengeId], references: [id])
-
-  @@map("data_gen_configs")
-}
-
-model Evaluation {
-  id              String   @id @default(uuid()) @db.Uuid
-  courseId        String   @map("course_id") @db.Uuid
-  createdBy       String   @map("created_by") @db.Uuid
-  title           String
-  description     String?
-  startDate       DateTime @map("start_date")
-  endDate         DateTime @map("end_date")
-  durationMinutes Int      @map("duration_minutes")
-  maxAttempts     Int      @default(1) @map("max_attempts")
-  isVisible       Boolean  @default(false) @map("is_visible")
-
-  course      Course                @relation(fields: [courseId], references: [id])
-  creator     User                  @relation("EvaluationCreator", fields: [createdBy], references: [id])
-  challenges  EvaluationChallenge[]
-  submissions Submission[]
-
-  @@index([courseId], name: "idx_evaluation_course")
-  @@map("evaluations")
-}
-
-model EvaluationChallenge {
-  evaluationId String @map("evaluation_id") @db.Uuid
-  challengeId  String @map("challenge_id") @db.Uuid
-  orderIndex   Int?   @map("order_index")
-  points       Int    @default(10)
-
-  evaluation Evaluation @relation(fields: [evaluationId], references: [id])
-  challenge  Challenge  @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-
-  @@id([evaluationId, challengeId])
-  @@map("evaluation_challenges")
-}
-
-model Submission {
-  id              String           @id @default(uuid()) @db.Uuid
-  studentId       String           @map("student_id") @db.Uuid
-  challengeId     String           @map("challenge_id") @db.Uuid
-  evaluationId    String?          @map("evaluation_id") @db.Uuid
-  query           String
-  status          SubmissionStatus @default(QUEUED)
-  executionTimeMs Int?             @map("execution_time_ms")
-  score           Decimal?         @default(0) @db.Decimal
-  resultJson      Json?            @map("result_json")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
-
-  student        User              @relation(fields: [studentId], references: [id])
-  challenge      Challenge         @relation(fields: [challengeId], references: [id])
-  evaluation     Evaluation?       @relation(fields: [evaluationId], references: [id])
-  recommendation AiRecommendation?
-
-  @@index([studentId], name: "idx_submission_student")
-  @@index([challengeId], name: "idx_submission_challenge")
-  @@map("submissions")
-}
-
-model AiRecommendation {
-  id               String   @id @default(uuid()) @db.Uuid
-  submissionId     String   @unique @map("submission_id") @db.Uuid
-  analysisText     String   @map("analysis_text")
-  suggestedQuery   String?  @map("suggested_query")
-  suggestedIndices String?  @map("suggested_indices")
-  tokensUsed       Int?     @map("tokens_used")
-  modelUsed        String?  @default("gpt-4") @map("model_used")
-  createdAt        DateTime @default(now()) @map("created_at")
-
-  submission Submission @relation(fields: [submissionId], references: [id])
-
-  @@map("ai_recommendations")
 }

@@ -13,6 +13,7 @@ import { challengeApi } from '../../infrastructure/challengeApi';
 import { evaluationChallengeApi } from '../../infrastructure/evaluationChallengeApi';
 import { authStorage } from '../../../auth/infrastructure/authStorage';
 import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
+import { aiApi } from '../../../ai/infrastructure/aiApi';
 
 type UserRole = 'ADMIN' | 'PROFESSOR' | 'STUDENT';
 type StudentEvaluationFilter = 'AVAILABLE' | 'UNAVAILABLE' | 'ALL';
@@ -172,7 +173,10 @@ function formatAttemptCountdown(milliseconds: number) {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-function getAttemptRemainingMs(attempt: ActiveStudentAttempt, currentTime: Date) {
+function getAttemptRemainingMs(
+  attempt: ActiveStudentAttempt,
+  currentTime: Date,
+) {
   const durationMs = Math.max(1, attempt.durationMinutes) * 60 * 1000;
   const elapsedMs = currentTime.getTime() - attempt.startedAt;
 
@@ -181,6 +185,112 @@ function getAttemptRemainingMs(attempt: ActiveStudentAttempt, currentTime: Date)
 
 export default function EvaluationsAndChallengesPage() {
   const { courseId } = useParams<{ courseId: string }>();
+  const [showAiSuggestionBox, setShowAiSuggestionBox] = useState(false);
+  const [aiSuggestionFeedback, setAiSuggestionFeedback] = useState('');
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  const toggleAiSuggestionBox = () => {
+    setShowAiSuggestionBox((currentValue) => !currentValue);
+    setAiSuggestionFeedback('');
+  };
+
+  const [aiSuggestionPrompt, setAiSuggestionPrompt] = useState('');
+
+  const handleSendAiSuggestionPrompt = async () => {
+    const prompt = aiSuggestionPrompt.trim();
+
+    if (!prompt) {
+      setAiSuggestionFeedback('Escribe el prompt que quieres enviar a la IA.');
+      return;
+    }
+
+    try {
+      setIsAiLoading(true);
+
+      const response = await aiApi.generateChallenge(prompt, token!);
+
+      console.log(response);
+
+      setChallengeForm((prev) => ({
+        ...prev,
+        title: response.title || prev.title,
+        description: response.description || prev.description,
+        difficulty: (response.difficulty as Difficulty) || prev.difficulty,
+        databaseEngine: response.databaseEngine || prev.databaseEngine,
+        schemaDefinition: response.schemaDefinition || prev.schemaDefinition,
+        seedScript: response.seedScript || prev.seedScript,
+        expectedResult: response.expectedResult || prev.expectedResult,
+        timeLimitMs: response.timeLimitMs || prev.timeLimitMs,
+      }));
+
+      setAiSuggestionFeedback('');
+      setShowAiSuggestionBox(false);
+    } catch (error: any) {
+      console.error('Error al generar el reto con IA:', error);
+      setAiSuggestionFeedback(
+        'No se pudo generar el reto. Por favor, verifica tu prompt o inténtalo más tarde.',
+      );
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const [showSeedAiBox, setShowSeedAiBox] = useState(false);
+  const [seedAiPrompt, setSeedAiPrompt] = useState('');
+  const [seedAiFeedback, setSeedAiFeedback] = useState('');
+  const [isSeedAiLoading, setIsSeedAiLoading] = useState(false);
+
+  const toggleSeedAiBox = () => {
+    if (
+      !challengeForm.schemaDefinition ||
+      !challengeForm.schemaDefinition.trim()
+    ) {
+      setFormError(
+        'Debes definir el Esquema SQL antes de generar datos de prueba con IA.',
+      );
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    setShowSeedAiBox((current) => !current);
+    setSeedAiFeedback('');
+  };
+
+  const handleSendSeedAiPrompt = async () => {
+    const prompt = seedAiPrompt.trim();
+
+    if (!prompt) {
+      setSeedAiFeedback(
+        'Escribe instrucciones (ej: Genera 50 clientes de Colombia).',
+      );
+      return;
+    }
+
+    try {
+      setIsSeedAiLoading(true);
+      const generatedScript = await aiApi.generateRandomData(
+        challengeForm.schemaDefinition,
+        prompt,
+        token!,
+      );
+
+      setChallengeForm((prev) => ({
+        ...prev,
+        seedScript: generatedScript,
+      }));
+
+      setShowSeedAiBox(false);
+      setSeedAiPrompt('');
+      setSeedAiFeedback('');
+    } catch (error: any) {
+      console.error('Error al generar los datos con IA:', error);
+      setSeedAiFeedback(
+        'No se pudieron generar los datos. Inténtalo más tarde.',
+      );
+    } finally {
+      setIsSeedAiLoading(false);
+    }
+  };
+
   const navigate = useNavigate();
 
   const [session] = useState(() => ({
@@ -297,8 +407,9 @@ export default function EvaluationsAndChallengesPage() {
     if (!selectedEvaluationId) return null;
 
     return (
-      evaluations.find((evaluation) => evaluation.id === selectedEvaluationId) ||
-      null
+      evaluations.find(
+        (evaluation) => evaluation.id === selectedEvaluationId,
+      ) || null
     );
   }, [selectedEvaluationId, evaluations]);
 
@@ -656,7 +767,10 @@ export default function EvaluationsAndChallengesPage() {
     }
   };
 
-  const handleEditChallenge = (evaluation: Evaluation, challenge: Challenge) => {
+  const handleEditChallenge = (
+    evaluation: Evaluation,
+    challenge: Challenge,
+  ) => {
     setEditingEvaluationId(evaluation.id);
     setSelectedEvaluationId(evaluation.id);
     setEditingChallengeId(challenge.id);
@@ -720,7 +834,10 @@ export default function EvaluationsAndChallengesPage() {
     setSelectedEvaluationId(evaluationId);
   };
 
-  const handleStartChallenge = (evaluation: Evaluation, challenge: Challenge) => {
+  const handleStartChallenge = (
+    evaluation: Evaluation,
+    challenge: Challenge,
+  ) => {
     if (!isChallengeAvailableForStudent(evaluation, challenge)) return;
 
     setSelectedEvaluationId(null);
@@ -1277,15 +1394,120 @@ export default function EvaluationsAndChallengesPage() {
                     </div>
 
                     <div className="eval-form-group full">
-                      <label>Datos iniciales</label>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        <label style={{ margin: 0 }}>Datos iniciales</label>
+                        <button
+                          type="button"
+                          className="eval-ai-btn"
+                          style={{ padding: '4px 12px', fontSize: '0.85rem' }}
+                          onClick={toggleSeedAiBox}
+                        >
+                          Generar con IA
+                        </button>
+                      </div>
                       <textarea
                         className="eval-code-textarea"
                         value={challengeForm.seedScript}
                         onChange={(event) =>
-                          handleChallengeChange('seedScript', event.target.value)
+                          handleChallengeChange(
+                            'seedScript',
+                            event.target.value,
+                          )
                         }
                       />
                     </div>
+
+                    {showSeedAiBox && (
+                      <div
+                        className="eval-ai-modal-overlay"
+                        onClick={() =>
+                          !isSeedAiLoading && setShowSeedAiBox(false)
+                        }
+                      >
+                        <div
+                          className="eval-ai-suggestion-box eval-ai-modal"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {!isSeedAiLoading && (
+                            <button
+                              type="button"
+                              className="eval-ai-modal-close-btn"
+                              onClick={() => setShowSeedAiBox(false)}
+                            >
+                              &times;
+                            </button>
+                          )}
+
+                          {isSeedAiLoading ? (
+                            <div className="eval-ai-loading-container">
+                              <div className="eval-ai-spinner"></div>
+                              <h4>Analizando Esquema...</h4>
+                              <p>
+                                La IA está leyendo tus tablas y generando los
+                                registros solicitados.
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <h4>Generador de Datos SQL</h4>
+                                <p>
+                                  El esquema actual será enviado a la IA. Indica
+                                  qué tipo de datos, cantidad o casos borde
+                                  necesitas.{' '}
+                                  <strong>
+                                    Esto puede tardar unos minutos.
+                                  </strong>
+                                </p>
+                              </div>
+
+                              <textarea
+                                value={seedAiPrompt}
+                                onChange={(event) => {
+                                  setSeedAiPrompt(event.target.value);
+                                  setSeedAiFeedback('');
+                                }}
+                                placeholder="Ej: Genera 20 registros con fechas entre 2023 y 2024, asegúrate de incluir valores nulos en el campo ciudad."
+                              />
+
+                              {seedAiFeedback && (
+                                <span className="eval-ai-feedback">
+                                  {seedAiFeedback}
+                                </span>
+                              )}
+
+                              <div className="eval-ai-suggestion-footer">
+                                <button
+                                  type="button"
+                                  className="eval-secondary-btn"
+                                  onClick={() => {
+                                    setSeedAiPrompt('');
+                                    setSeedAiFeedback('');
+                                  }}
+                                >
+                                  Limpiar
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="eval-primary-btn"
+                                  onClick={handleSendSeedAiPrompt}
+                                >
+                                  Generar Datos
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="eval-form-group full">
                       <label>Resultado esperado</label>
@@ -1311,6 +1533,98 @@ export default function EvaluationsAndChallengesPage() {
                   </div>
 
                   <div className="eval-form-actions">
+                    <button
+                      type="button"
+                      className="eval-ai-btn"
+                      onClick={toggleAiSuggestionBox}
+                    >
+                      Sugerencia IA
+                    </button>
+
+                    {showAiSuggestionBox && (
+                      <div
+                        className="eval-ai-modal-overlay"
+                        onClick={() =>
+                          !isAiLoading && setShowAiSuggestionBox(false)
+                        }
+                      >
+                        <div
+                          className="eval-ai-suggestion-box eval-ai-modal"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {!isAiLoading && (
+                            <button
+                              type="button"
+                              className="eval-ai-modal-close-btn"
+                              onClick={() => setShowAiSuggestionBox(false)}
+                            >
+                              &times;
+                            </button>
+                          )}
+
+                          {isAiLoading ? (
+                            <div className="eval-ai-loading-container">
+                              <div className="eval-ai-spinner"></div>
+                              <h4>Pensando...</h4>
+                              <p>
+                                La Inteligencia Artificial está estructurando y
+                                diseñando tu reto SQL personalizado.
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <h4>Prompt para la IA</h4>
+                                <p>
+                                  Escribe la instrucción que quieres enviar a la
+                                  IA para generar el reto SQL.{' '}
+                                  <strong>
+                                    Esto puede tardar unos minutos.
+                                  </strong>
+                                </p>
+                              </div>
+
+                              <textarea
+                                value={aiSuggestionPrompt}
+                                onChange={(event) => {
+                                  setAiSuggestionPrompt(event.target.value);
+                                  setAiSuggestionFeedback('');
+                                }}
+                                placeholder="Ej: Crea un reto SQL sobre joins entre clientes y órdenes, con dificultad media, usando PostgreSQL."
+                              />
+
+                              {aiSuggestionFeedback && (
+                                <span className="eval-ai-feedback">
+                                  {aiSuggestionFeedback}
+                                </span>
+                              )}
+
+                              <div className="eval-ai-suggestion-footer">
+                                <button
+                                  type="button"
+                                  className="eval-secondary-btn"
+                                  onClick={() => {
+                                    setAiSuggestionPrompt('');
+                                    setAiSuggestionFeedback('');
+                                  }}
+                                >
+                                  Limpiar
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="eval-primary-btn"
+                                  onClick={handleSendAiSuggestionPrompt}
+                                >
+                                  Enviar a IA
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <button
                       type="button"
                       className="eval-secondary-btn"
@@ -1407,7 +1721,9 @@ export default function EvaluationsAndChallengesPage() {
                   <div className="eval-card-dates">
                     <span>Inicio: {formatDate(evaluation.startDate)}</span>
                     <span>Cierre: {formatDate(evaluation.endDate)}</span>
-                    <span>Duración: {evaluation.durationMinutes || 90} min</span>
+                    <span>
+                      Duración: {evaluation.durationMinutes || 90} min
+                    </span>
                     <span>Intentos: {evaluation.maxAttempts}</span>
                     <span>Retos: {evaluation.challenges?.length || 0}</span>
                   </div>
@@ -1460,7 +1776,9 @@ export default function EvaluationsAndChallengesPage() {
                                       : 'eval-mini-unavailable'
                                   }
                                 >
-                                  {getChallengeStatusLabel(challenge.visibility)}
+                                  {getChallengeStatusLabel(
+                                    challenge.visibility,
+                                  )}
                                 </span>
 
                                 <button
