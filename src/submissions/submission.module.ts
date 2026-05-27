@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { PrismaModule } from '../prisma/prisma.module';
 import { SharedModule } from '../shared/shared.module';
 import { ChallengesModule } from '../challenges/challenges.module';
+import { AiModule } from '../ai/ai.module';
 import { SubmissionsController } from './infrastructure/controllers/submissions.controller';
 import { SqlWorker } from './infrastructure/queue/sql.worker';
 import { PrismaSubmissionRepository } from './infrastructure/persistence/prisma-submission.repository';
@@ -23,6 +24,7 @@ import { SQL_SANDBOX_RUNNER } from './domain/interfaces/sql-sandbox-runner.inter
     PrismaModule,
     SharedModule,
     ChallengesModule,
+    AiModule,
     BullModule.registerQueue({
       name: 'sql-evaluation',
       defaultJobOptions: {
