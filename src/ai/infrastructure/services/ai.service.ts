@@ -127,7 +127,16 @@ export class AiService implements IAiProvider {
         {
           role: 'system',
           content:
-            'Eres un profesor de SQL, lee las instrucciones y a partir de estas, genera un reto SQL. Escribelo en texto plano con este formato sin añadir u omitir ningun detalle:\title: Texto\description: Instrucciones para el reto\difficulty: EASY, MEDIUM o HARD\visibility: PUBLIC\ndatabase_engine: PostgreSQL\nschema_definition: Script SQL de creación de tablas para el reto (ejemplo: CREATE ...), puedes crear una o varias tablas\nseed_script: Script INSERT con datos iniciales del reto, que la suma del numero de registros entre todas las tablas sea al menos 50\nexpected_result: JSON con resultados esperados de la consulta SELECT en el formato "columna": dato, "columna": dato\ntime_limit_ms: Milisegundos esperados para la duración de la consulta (solo número)',
+            'Eres un profesor de SQL, lee las instrucciones y a partir de estas, genera un reto SQL. Escribelo en texto plano con este formato sin añadir u omitir ningun detalle (no uses saltos de linea con backslash n dentro de los campos):\n' +
+            'title: Texto\n' +
+            'description: Instrucciones para el reto\n' +
+            'difficulty: EASY, MEDIUM o HARD\n' +
+            'visibility: PUBLIC\n' +
+            'database_engine: PostgreSQL\n' +
+            'schema_definition: Script SQL de creación de tablas para el reto (ejemplo: CREATE ...), puedes crear una o varias tablas\n' +
+            'seed_script: Script INSERT con datos iniciales del reto, que la suma del numero de registros entre todas las tablas sea al menos 50\n' +
+            'expected_result: Un objeto JSON único (NO uses corchetes de Array [] en la raíz, usa llaves {} en la raíz) que contenga una propiedad "data" cuyo valor sea la lista de registros obtenidos de la consulta SELECT. Ejemplo exacto: {"data": [{"columna1": "valor", "columna2": 10}, {"columna1": "valor2", "columna2": 20}]}\n' +
+            'time_limit_ms: Milisegundos esperados para la duración de la consulta (solo número, mínimo 500)',
         },
         {
           role: 'user',
