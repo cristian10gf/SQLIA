@@ -14,7 +14,9 @@ import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
 import { EvaluationModal } from '../components/EvaluationModal';
 import { StudentAttemptModal } from '../components/StudentAttemptModal';
+import { LeaderboardModal } from '../components/LeaderboardModal';
 import { formatDate, getSessionUser } from '../utils/evaluationUtils';
+import { submissionsApi } from '../../../submissions/infrastructure/submissionsApi';
 import '../styles/EvaluationsAndChallengesPage.css';
 
 interface ActiveAttempt {
@@ -47,6 +49,9 @@ export default function EvaluationDetailPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [pageError, setPageError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+
+  const [mySubmissionCount, setMySubmissionCount] = useState(0);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(
@@ -118,6 +123,15 @@ export default function EvaluationDetailPage() {
           }),
         );
         setSandboxStatuses(statuses);
+      }
+
+      if (isStudent && evaluationId && token) {
+        try {
+          const countRes = await submissionsApi.getMyCount(evaluationId, token);
+          setMySubmissionCount(countRes.count ?? 0);
+        } catch {
+          setMySubmissionCount(0);
+        }
       }
     } catch (err: any) {
       setPageError(
@@ -193,6 +207,11 @@ export default function EvaluationDetailPage() {
   const handleCloseAttempt = () => {
     setActiveAttempt(null);
     setActionMessage('Solución enviada. Revisa tu resultado cuando esté disponible.');
+    if (isStudent && evaluationId && token) {
+      submissionsApi.getMyCount(evaluationId, token)
+        .then((r) => setMySubmissionCount(r.count ?? 0))
+        .catch(() => {});
+    }
   };
 
   const handleLogout = () => {
@@ -236,6 +255,13 @@ export default function EvaluationDetailPage() {
 
           {(isProfessor || isAdmin) && evaluation && (
             <div className="eval-detail-page-actions">
+              <button
+                type="button"
+                className="eval-secondary-btn"
+                onClick={() => setShowLeaderboard(true)}
+              >
+                Ver ranking
+              </button>
               <button
                 type="button"
                 className="eval-secondary-btn"
@@ -335,6 +361,7 @@ export default function EvaluationDetailPage() {
                   isStudent={isStudent}
                   token={token!}
                   sandboxStatus={sandboxStatuses[ch.id.toString()]}
+                  submissionsUsed={isStudent ? mySubmissionCount : undefined}
                   onSandboxStatusChange={handleSandboxStatusChange}
                   onEdit={handleOpenEditChallenge}
                   onDelete={handleDeleteChallenge}
@@ -379,6 +406,15 @@ export default function EvaluationDetailPage() {
           token={token!}
           evaluationId={evaluationId!}
           onClose={handleCloseAttempt}
+        />
+      )}
+
+      {showLeaderboard && evaluation && (
+        <LeaderboardModal
+          evaluationId={evaluation.id.toString()}
+          evaluationTitle={evaluation.title}
+          token={token!}
+          onClose={() => setShowLeaderboard(false)}
         />
       )}
     </DashboardLayout>

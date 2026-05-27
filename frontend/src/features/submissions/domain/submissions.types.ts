@@ -38,3 +38,12 @@ export type SubmissionResult = {
     message?: string;
   };
 };
+
+export type LeaderboardEntry = {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  totalScore: number;
+  challengesSolved: number;
+  submissionCount: number;
+};
