@@ -9,7 +9,8 @@
 }
 
 .management-heading span,
-.management-panel-header span {
+.management-panel-header span,
+.management-modal-header span {
   display: inline-block;
   margin-bottom: 10px;
   color: #2563eb;
@@ -54,14 +55,6 @@
   color: #b91c1c;
 }
 
-.management-workspace {
-  display: grid;
-  grid-template-columns: 420px minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
-}
-
-.management-form-panel,
 .management-list-panel {
   background: #ffffff;
   border-radius: 24px;
@@ -69,14 +62,16 @@
   padding: 24px;
 }
 
-.management-form-panel {
-  position: sticky;
-  top: 24px;
-  scroll-margin-top: 24px;
-}
-
 .management-panel-header {
   margin-bottom: 20px;
+}
+
+.management-panel-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .management-panel-header h2 {
@@ -234,7 +229,7 @@
 
 .management-list-tools {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 210px 210px;
+  grid-template-columns: minmax(220px, 1fr) 200px;
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -336,14 +331,132 @@
   text-align: center;
 }
 
-@media (max-width: 1300px) {
-  .management-workspace {
-    grid-template-columns: 1fr;
-  }
+.management-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
 
-  .management-form-panel {
-    position: static;
-  }
+.management-modal {
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  padding: 28px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.management-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.management-modal-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.management-modal-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.management-modal-close {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.management-modal-close:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.management-modal--confirm {
+  max-width: 420px;
+  gap: 16px;
+  text-align: center;
+  align-items: center;
+}
+
+.management-confirm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  background: #fee2e2;
+  color: #b91c1c;
+  flex-shrink: 0;
+}
+
+.management-confirm-body h2 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.management-confirm-body p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.management-confirm-body p strong {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.management-confirm-email {
+  margin-top: 6px !important;
+  color: #94a3b8 !important;
+  font-size: 13px !important;
+  font-style: italic;
+}
+
+.management-modal--confirm .management-form-actions {
+  width: 100%;
+  margin-top: 4px;
+  justify-content: center;
+}
+
+.management-modal--confirm .management-danger-btn {
+  background: linear-gradient(90deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.25);
 }
 
 @media (max-width: 900px) {

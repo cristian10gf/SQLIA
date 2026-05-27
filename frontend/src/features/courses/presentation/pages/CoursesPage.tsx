@@ -5,7 +5,9 @@ import { authStorage } from '../../../auth/infrastructure/authStorage';
 import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 import type { DashboardRole } from '../../../../shared/layouts/DashboardLayout';
 import { courseApi } from '../../infrastructure/courseApi';
+import { enrollmentApi } from '../../infrastructure/enrollmentApi';
 import type { Course, CourseListResponse } from '../../domain/course.types';
+import type { BulkEnrollResult, StudentInCourse } from '../../domain/enrollment.types';
 import '../styles/CoursesPage.css';
 
 type CourseForm = {
@@ -28,6 +30,8 @@ const emptyForm: CourseForm = {
   professorId: '',
 };
 
+const STUDENTS_LIMIT = 10;
+
 const roleTitle: Record<DashboardRole, string> = {
   ADMIN: 'Gestión general de cursos',
   PROFESSOR: 'Mis cursos asignados',
@@ -48,6 +52,24 @@ function normalizeCourseList(response: CourseListResponse): Course[] {
 
 function normalizeText(value: string) {
   return value.trim().toLowerCase();
+}
+
+function formatBulkEnrollSummary(result: BulkEnrollResult) {
+  const parts = [
+    `${result.enrolled} inscrito(s)`,
+    `${result.alreadyEnrolled} ya inscrito(s)`,
+    `${result.notFound} no encontrado(s)`,
+  ];
+
+  if (result.notStudentRole > 0) {
+    parts.push(`${result.notStudentRole} sin rol estudiante`);
+  }
+
+  if (result.duplicateEmailsInCsv > 0) {
+    parts.push(`${result.duplicateEmailsInCsv} correo(s) duplicado(s) en el CSV`);
+  }
+
+  return parts.join(' · ');
 }
 
 export function CoursesPage() {
@@ -73,13 +95,24 @@ export function CoursesPage() {
   const [form, setForm] = useState<CourseForm>(emptyForm);
   const [errors, setErrors] = useState<CourseErrors>({});
   const [message, setMessage] = useState('');
+  const [importTargetCourseId, setImportTargetCourseId] = useState<string | null>(
+    null,
+  );
   const [importFileName, setImportFileName] = useState('');
+  const [importResult, setImportResult] = useState<BulkEnrollResult | null>(null);
   const [loadError, setLoadError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [courseStudents, setCourseStudents] = useState<StudentInCourse[]>([]);
+  const [studentsPage, setStudentsPage] = useState(1);
+  const [studentsTotal, setStudentsTotal] = useState(0);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
 
   const canCreateCourse = role === 'PROFESSOR';
   const canManageCourse = role === 'ADMIN' || role === 'PROFESSOR';
+
+  const studentsTotalPages = Math.ceil(studentsTotal / STUDENTS_LIMIT);
 
   useEffect(() => {
     if (!token || !user) {
@@ -131,6 +164,29 @@ export function CoursesPage() {
   useEffect(() => {
     void loadCourses();
   }, [loadCourses]);
+
+  const loadStudents = useCallback(
+    async (courseId: string, page: number) => {
+      if (!token) return;
+      setIsLoadingStudents(true);
+      try {
+        const res = await enrollmentApi.getStudentsByCourse(courseId, token, page);
+        setCourseStudents(res.data);
+        setStudentsTotal(res.total);
+      } catch {
+        setCourseStudents([]);
+        setStudentsTotal(0);
+      } finally {
+        setIsLoadingStudents(false);
+      }
+    },
+    [token],
+  );
+
+  useEffect(() => {
+    if (!detailCourse || !canManageCourse) return;
+    void loadStudents(detailCourse.id, studentsPage);
+  }, [detailCourse, studentsPage, canManageCourse, loadStudents]);
 
   const visibleCourses = useMemo(() => {
     const search = normalizeText(searchTerm);
@@ -237,6 +293,7 @@ export function CoursesPage() {
     });
     setErrors({});
     setImportFileName('');
+    setImportResult(null);
     setSelectedCourse(null);
     setDetailCourse(null);
     setFormMode('create');
@@ -267,41 +324,86 @@ export function CoursesPage() {
     setSelectedCourse(null);
     setErrors({});
     setMessage('');
+    setCourseStudents([]);
+    setStudentsPage(1);
+    setStudentsTotal(0);
     scrollToDetail();
+  };
+
+  const closeDetail = () => {
+    setDetailCourse(null);
+    setCourseStudents([]);
+    setStudentsPage(1);
+    setStudentsTotal(0);
   };
 
   const closeForm = () => {
     setForm(emptyForm);
     setErrors({});
     setImportFileName('');
+    setImportResult(null);
     setSelectedCourse(null);
     setFormMode(null);
   };
 
-  const handleOpenStudentsImport = () => {
+  const handleOpenStudentsImport = (courseId: string) => {
+    setImportTargetCourseId(courseId);
+    setImportResult(null);
+    setMessage('');
     studentsImportInputRef.current?.click();
   };
 
-  const handleStudentsImportChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleStudentsImportChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
+    event.target.value = '';
 
-    if (!file) {
+    if (!file || !importTargetCourseId) {
       return;
     }
 
     const isCsvFile = file.name.toLowerCase().endsWith('.csv');
 
     if (!isCsvFile) {
-      event.target.value = '';
       setImportFileName('');
-      setMessage('Solo se permiten archivos .csv para importar estudiantes.');
+      setMessage('Solo se permiten archivos .csv exportados desde Brightspace.');
       return;
     }
 
-    setImportFileName(file.name);
-    setMessage(
-      `Archivo "${file.name}" seleccionado para importar estudiantes.`,
-    );
+    if (!token) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      setImportFileName(file.name);
+      setMessage('');
+      setImportResult(null);
+
+      const response = await enrollmentApi.bulkEnrollFromCsv(
+        importTargetCourseId,
+        file,
+        token,
+      );
+
+      setImportResult(response.data);
+      setMessage(
+        `${response.message}: ${formatBulkEnrollSummary(response.data)}`,
+      );
+    } catch (error) {
+      setImportFileName('');
+      setImportResult(null);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'No fue posible importar estudiantes desde el CSV.',
+      );
+    } finally {
+      setIsImporting(false);
+      setImportTargetCourseId(null);
+    }
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -420,6 +522,71 @@ export function CoursesPage() {
 
         {message && <p className="courses-message">{message}</p>}
         {loadError && <p className="courses-error-message">{loadError}</p>}
+
+        <input
+          ref={studentsImportInputRef}
+          type="file"
+          accept=".csv,text/csv"
+          className="course-import-input"
+          onChange={(event) => void handleStudentsImportChange(event)}
+        />
+
+        {importResult && (
+          <article className="course-import-result-card">
+            <div className="course-import-result-header">
+              <div>
+                <span>Resultado de importación</span>
+                <h2>Resumen de inscripciones</h2>
+              </div>
+              {importFileName && (
+                <p className="course-import-file-name">
+                  Archivo: <strong>{importFileName}</strong>
+                </p>
+              )}
+            </div>
+
+            <div className="course-import-result-grid">
+              <div>
+                <span>Filas en CSV</span>
+                <strong>{importResult.totalRowsInCsv}</strong>
+              </div>
+              <div>
+                <span>Correos únicos</span>
+                <strong>{importResult.uniqueEmailsInCsv}</strong>
+              </div>
+              <div>
+                <span>Inscritos</span>
+                <strong>{importResult.enrolled}</strong>
+              </div>
+              <div>
+                <span>Ya inscritos</span>
+                <strong>{importResult.alreadyEnrolled}</strong>
+              </div>
+              <div>
+                <span>No encontrados</span>
+                <strong>{importResult.notFound}</strong>
+              </div>
+              <div>
+                <span>Sin rol estudiante</span>
+                <strong>{importResult.notStudentRole}</strong>
+              </div>
+            </div>
+
+            {importResult.notFoundEmails.length > 0 && (
+              <div className="course-import-result-list">
+                <span>Correos no registrados</span>
+                <p>{importResult.notFoundEmails.join(', ')}</p>
+              </div>
+            )}
+
+            {importResult.notStudentEmails.length > 0 && (
+              <div className="course-import-result-list">
+                <span>Correos sin rol estudiante</span>
+                <p>{importResult.notStudentEmails.join(', ')}</p>
+              </div>
+            )}
+          </article>
+        )}
 
         <div className="courses-toolbar">
           <input
@@ -557,33 +724,7 @@ export function CoursesPage() {
                     ? 'Guardar curso'
                     : 'Guardar cambios'}
               </button>
-
-              {formMode === 'create' && (
-                <>
-                  <input
-                    ref={studentsImportInputRef}
-                    type="file"
-                    accept=".csv,text/csv"
-                    className="course-import-input"
-                    onChange={handleStudentsImportChange}
-                  />
-
-                  <button
-                    type="button"
-                    className="course-import-button"
-                    onClick={handleOpenStudentsImport}
-                  >
-                    Importar estudiantes
-                  </button>
-                </>
-              )}
             </div>
-
-            {importFileName && (
-              <p className="course-import-file-name">
-                Archivo seleccionado: <strong>{importFileName}</strong>
-              </p>
-            )}
           </form>
         )}
 
@@ -595,7 +736,7 @@ export function CoursesPage() {
                 <h2>{detailCourse.name}</h2>
               </div>
 
-              <button type="button" onClick={() => setDetailCourse(null)}>
+              <button type="button" onClick={closeDetail}>
                 Cerrar
               </button>
             </div>
@@ -611,6 +752,74 @@ export function CoursesPage() {
                 <strong>{detailCourse.group}</strong>
               </div>
             </div>
+
+            {canManageCourse && (
+              <div className="course-form-actions">
+                <button
+                  type="button"
+                  className="course-import-button"
+                  disabled={isImporting}
+                  onClick={() => handleOpenStudentsImport(detailCourse.id)}
+                >
+                  {isImporting ? 'Importando estudiantes...' : 'Importar estudiantes (CSV)'}
+                </button>
+              </div>
+            )}
+
+            <p className="course-import-hint">
+              Usa un CSV UTF-8 exportado desde Brightspace: Groups → categoría
+              de grupos → Export → All Groups. Debe incluir la columna{' '}
+              <strong>Email Address</strong>.
+            </p>
+
+            {canManageCourse && (
+              <div className="course-students-section">
+                <span>Estudiantes inscritos</span>
+
+                {isLoadingStudents && (
+                  <p className="course-students-status">Cargando estudiantes...</p>
+                )}
+
+                {!isLoadingStudents && courseStudents.length === 0 && (
+                  <p className="course-students-status">
+                    No hay estudiantes inscritos en este curso.
+                  </p>
+                )}
+
+                {!isLoadingStudents && courseStudents.length > 0 && (
+                  <>
+                    <div className="course-students-list">
+                      {courseStudents.map((item) => (
+                        <div key={item.student.id} className="course-student-row">
+                          <strong>{item.student.fullName}</strong>
+                          <p>{item.student.email}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {studentsTotalPages > 1 && (
+                      <div className="course-students-pagination">
+                        <button
+                          type="button"
+                          disabled={studentsPage === 1}
+                          onClick={() => setStudentsPage((p) => p - 1)}
+                        >
+                          Anterior
+                        </button>
+                        <p>Página {studentsPage} de {studentsTotalPages}</p>
+                        <button
+                          type="button"
+                          disabled={studentsPage >= studentsTotalPages}
+                          onClick={() => setStudentsPage((p) => p + 1)}
+                        >
+                          Siguiente
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </article>
         )}
 
@@ -649,6 +858,17 @@ export function CoursesPage() {
 
                   {canManageCourse && (
                     <>
+                      <button
+                        type="button"
+                        disabled={isImporting}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenStudentsImport(course.id);
+                        }}
+                      >
+                        {isImporting ? 'Importando...' : 'Importar CSV'}
+                      </button>
+
                       <button
                         type="button"
                         onClick={(e) => {
