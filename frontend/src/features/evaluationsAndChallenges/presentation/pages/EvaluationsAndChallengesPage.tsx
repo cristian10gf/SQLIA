@@ -335,9 +335,7 @@ export default function EvaluationsAndChallengesPage() {
   const [studentSolutions, setStudentSolutions] = useState<
     Record<number, string>
   >({});
-  const [studentSolutionMessages, setStudentSolutionMessages] = useState<
-    Record<number, string>
-  >({});
+  const [, setStudentSolutionMessages] = useState<Record<number, string>>({});
 
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [activeStudentAttempt, setActiveStudentAttempt] =
