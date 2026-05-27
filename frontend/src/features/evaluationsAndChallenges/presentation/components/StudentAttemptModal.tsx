@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react';
-import type { Challenge, Evaluation } from '../../domain/evaluationChallenge.types';
-import { formatAttemptCountdown, getAttemptRemainingMs, getDifficultyLabel } from '../utils/evaluationUtils';
+import type {
+  Challenge,
+  Evaluation,
+} from '../../domain/evaluationChallenge.types';
+import {
+  formatAttemptCountdown,
+  getAttemptRemainingMs,
+  getDifficultyLabel,
+} from '../utils/evaluationUtils';
 import '../styles/EvaluationsAndChallengesPage.css';
 
 interface StudentAttemptModalProps {
@@ -10,7 +17,12 @@ interface StudentAttemptModalProps {
   onSubmit: (challengeId: number | string, solution: string) => void;
 }
 
-export function StudentAttemptModal({ evaluation, challenge, startedAt, onSubmit }: StudentAttemptModalProps) {
+export function StudentAttemptModal({
+  evaluation,
+  challenge,
+  startedAt,
+  onSubmit,
+}: StudentAttemptModalProps) {
   const [solution, setSolution] = useState('');
   const [currentTime, setCurrentTime] = useState(() => new Date());
 
@@ -19,11 +31,19 @@ export function StudentAttemptModal({ evaluation, challenge, startedAt, onSubmit
     return () => window.clearInterval(id);
   }, []);
 
-  const remainingMs = getAttemptRemainingMs(startedAt, evaluation.durationMinutes || 90, currentTime);
+  const remainingMs = getAttemptRemainingMs(
+    startedAt,
+    evaluation.durationMinutes || 90,
+    currentTime,
+  );
   const expired = remainingMs <= 0;
 
   return (
-    <div className="eval-student-modal-backdrop" role="dialog" aria-modal="true">
+    <div
+      className="eval-student-modal-backdrop"
+      role="dialog"
+      aria-modal="true"
+    >
       <section className="eval-student-modal">
         <div className="eval-student-modal-header">
           <div>
@@ -31,6 +51,29 @@ export function StudentAttemptModal({ evaluation, challenge, startedAt, onSubmit
             <h2>{challenge.title}</h2>
             <p>{challenge.description}</p>
           </div>
+        </div>
+
+        <div className="eval-solution-box" style={{ marginBottom: '20px' }}>
+          <label
+            style={{
+              fontWeight: 'bold',
+              display: 'block',
+              marginBottom: '6px',
+            }}
+          >
+            Esquema de la base de datos (Tablas disponibles)
+          </label>
+          <textarea
+            className="eval-code-textarea"
+            style={{
+              backgroundColor: '#f3f4f6',
+              fontFamily: 'monospace',
+              cursor: 'default',
+              minHeight: '120px',
+            }}
+            value={challenge.schemaDefinition}
+            readOnly
+          />
         </div>
 
         <div className="eval-challenge-tags">
@@ -53,7 +96,9 @@ export function StudentAttemptModal({ evaluation, challenge, startedAt, onSubmit
             placeholder="Escribe aquí tu solución."
             disabled={expired}
           />
-          {expired && <span className="eval-error-text">El tiempo del reto terminó.</span>}
+          {expired && (
+            <span className="eval-error-text">El tiempo del reto terminó.</span>
+          )}
 
           <div className="eval-student-modal-actions">
             <button
