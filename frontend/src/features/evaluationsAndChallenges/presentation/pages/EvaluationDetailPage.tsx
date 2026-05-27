@@ -14,9 +14,11 @@ import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
 import { EvaluationModal } from '../components/EvaluationModal';
 import { StudentAttemptModal } from '../components/StudentAttemptModal';
+import { LeaderboardModal } from '../components/LeaderboardModal';
+import { ChallengeSubmissionsModal } from '../components/ChallengeSubmissionsModal';
 import { formatDate, getSessionUser } from '../utils/evaluationUtils';
-import '../styles/EvaluationsAndChallengesPage.css';
 import { submissionsApi } from '../../../submissions/infrastructure/submissionsApi';
+import '../styles/EvaluationsAndChallengesPage.css';
 
 interface ActiveAttempt {
   challengeId: number | string;
@@ -48,6 +50,10 @@ export default function EvaluationDetailPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [pageError, setPageError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
+
+  const [mySubmissionCount, setMySubmissionCount] = useState(0);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [viewingSubmissionsChallenge, setViewingSubmissionsChallenge] = useState<Challenge | null>(null);
 
   const [showChallengeModal, setShowChallengeModal] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(
@@ -120,6 +126,15 @@ export default function EvaluationDetailPage() {
         );
         setSandboxStatuses(statuses);
       }
+
+      if (isStudent && evaluationId && token) {
+        try {
+          const countRes = await submissionsApi.getMyCount(evaluationId, token);
+          setMySubmissionCount(countRes.count ?? 0);
+        } catch {
+          setMySubmissionCount(0);
+        }
+      }
     } catch (err: any) {
       setPageError(
         err?.message || 'Error al cargar el detalle de la evaluación.',
@@ -191,21 +206,13 @@ export default function EvaluationDetailPage() {
     setActionMessage('');
   };
 
-  const handleSubmitSolution = async (
-    _challengeId: number | string,
-    _solution: string,
-  ) => {
-    try {
-      const submission = {
-        query: _solution,
-        challengeId: String(_challengeId),
-        evaluationId: evaluationId!,
-      };
-      await submissionsApi.send(submission, token!);
-      setActiveAttempt(null);
-      setActionMessage('Solución enviada correctamente.');
-    } catch (error: any) {
-      setPageError(error?.message || ' No se pudo enviar la solución');
+  const handleCloseAttempt = () => {
+    setActiveAttempt(null);
+    setActionMessage('Solución enviada. Revisa tu resultado cuando esté disponible.');
+    if (isStudent && evaluationId && token) {
+      submissionsApi.getMyCount(evaluationId, token)
+        .then((r) => setMySubmissionCount(r.count ?? 0))
+        .catch(() => {});
     }
   };
 
@@ -250,6 +257,13 @@ export default function EvaluationDetailPage() {
 
           {(isProfessor || isAdmin) && evaluation && (
             <div className="eval-detail-page-actions">
+              <button
+                type="button"
+                className="eval-secondary-btn"
+                onClick={() => setShowLeaderboard(true)}
+              >
+                Ver ranking
+              </button>
               <button
                 type="button"
                 className="eval-secondary-btn"
@@ -347,12 +361,15 @@ export default function EvaluationDetailPage() {
                   evaluation={evaluation!}
                   isProfessor={isProfessor}
                   isStudent={isStudent}
+                  isAdmin={isAdmin}
                   token={token!}
                   sandboxStatus={sandboxStatuses[ch.id.toString()]}
+                  submissionsUsed={isStudent ? mySubmissionCount : undefined}
                   onSandboxStatusChange={handleSandboxStatusChange}
                   onEdit={handleOpenEditChallenge}
                   onDelete={handleDeleteChallenge}
                   onStartChallenge={handleStartChallenge}
+                  onViewSubmissions={(ch) => setViewingSubmissionsChallenge(ch)}
                 />
               ))}
             </div>
@@ -390,7 +407,28 @@ export default function EvaluationDetailPage() {
           evaluation={evaluation}
           challenge={activeChallenge}
           startedAt={activeAttempt.startedAt}
-          onSubmit={handleSubmitSolution}
+          token={token!}
+          evaluationId={evaluationId!}
+          onClose={handleCloseAttempt}
+        />
+      )}
+
+      {showLeaderboard && evaluation && (
+        <LeaderboardModal
+          evaluationId={evaluation.id.toString()}
+          evaluationTitle={evaluation.title}
+          token={token!}
+          onClose={() => setShowLeaderboard(false)}
+        />
+      )}
+
+      {viewingSubmissionsChallenge && evaluation && (
+        <ChallengeSubmissionsModal
+          evaluationId={evaluation.id.toString()}
+          challengeId={viewingSubmissionsChallenge.id.toString()}
+          challengeTitle={viewingSubmissionsChallenge.title}
+          token={token!}
+          onClose={() => setViewingSubmissionsChallenge(null)}
         />
       )}
     </DashboardLayout>

@@ -1672,3 +1672,395 @@
   flex-direction: row;
   justify-content: space-between;
 }
+
+/* ─── Submission result panel ──────────────────────────────────────── */
+
+.eval-submission-result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.eval-result-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 22px;
+  border-radius: 22px;
+  gap: 12px;
+}
+
+.eval-result-status-banner.accepted {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.eval-result-status-banner.rejected {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+}
+
+.eval-result-status-label {
+  font-size: 20px;
+  font-weight: 900;
+  color: #081633;
+}
+
+.eval-result-score {
+  font-size: 28px;
+  font-weight: 900;
+  color: #081633;
+}
+
+.eval-result-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.eval-result-meta-item {
+  background: #f9fbff;
+  border: 1px solid #e8edf6;
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eval-result-meta-item span {
+  font-size: 12px;
+  color: #607492;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.eval-result-meta-item strong {
+  font-size: 20px;
+  font-weight: 900;
+  color: #081633;
+}
+
+.eval-result-error-box {
+  background: #fff1f1;
+  border: 1px solid #fca5a5;
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: #b91c1c;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.eval-ai-recommendations {
+  border: 1px solid #ddd6fe;
+  border-radius: 22px;
+  background: #fbfaff;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eval-ai-recommendations-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eval-ai-recommendations-body {
+  margin: 0;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.eval-result-tests {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eval-result-tests-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.eval-test-badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.eval-test-badge.pass {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.eval-test-badge.fail {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.eval-polling-indicator {
+  color: #5b21b6;
+  font-size: 14px;
+  font-weight: 800;
+  margin-right: auto;
+}
+
+.eval-student-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ─── Challenge submissions list ──────────────────────────────────── */
+
+.eval-submissions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.eval-submission-item {
+  border: 1px solid #e8edf6;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.eval-submission-summary {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.eval-submission-summary:hover {
+  background: #f8faff;
+}
+
+.eval-submission-student {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eval-submission-student strong {
+  font-size: 14px;
+  font-weight: 900;
+  color: #081633;
+}
+
+.eval-submission-student span {
+  font-size: 12px;
+  color: #607492;
+  font-weight: 600;
+}
+
+.eval-submission-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.eval-submission-status-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.eval-submission-status-badge.accepted {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.eval-submission-status-badge.rejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.eval-submission-status-badge.pending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.eval-submission-score-badge {
+  font-size: 13px;
+  font-weight: 900;
+  color: #2458db;
+  white-space: nowrap;
+}
+
+.eval-submission-ai-badge {
+  font-size: 12px;
+  font-weight: 800;
+  color: #5b21b6;
+  background: #f5f3ff;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.eval-submission-time {
+  font-size: 12px;
+  color: #607492;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.eval-submission-toggle {
+  font-size: 12px;
+  color: #607492;
+  flex-shrink: 0;
+}
+
+.eval-submission-detail {
+  padding: 0 18px 16px;
+  border-top: 1px solid #f0f4fb;
+}
+
+.eval-submission-query-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+}
+
+.eval-submission-query-box label {
+  font-size: 12px;
+  font-weight: 900;
+  color: #41516d;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.eval-submission-query-box pre {
+  margin: 0;
+  padding: 14px;
+  background: #07152f;
+  color: #dbeafe;
+  border-radius: 14px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ─── Leaderboard ──────────────────────────────────────────────────── */
+
+.eval-leaderboard {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 16px;
+  border: 1px solid #e8edf6;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.eval-leaderboard-header {
+  display: grid;
+  grid-template-columns: 48px 1fr 80px 80px 90px;
+  align-items: center;
+  padding: 12px 18px;
+  background: #f3f5f9;
+  border-bottom: 1px solid #e8edf6;
+  font-size: 12px;
+  font-weight: 900;
+  color: #607492;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  gap: 8px;
+}
+
+.eval-leaderboard-row {
+  display: grid;
+  grid-template-columns: 48px 1fr 80px 80px 90px;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f0f4fb;
+  background: #ffffff;
+  gap: 8px;
+  transition: background 0.15s ease;
+}
+
+.eval-leaderboard-row:last-child {
+  border-bottom: none;
+}
+
+.eval-leaderboard-row:hover {
+  background: #f8faff;
+}
+
+.eval-leaderboard-row.top3 {
+  background: #fdfcff;
+}
+
+.eval-leaderboard-row.top3:hover {
+  background: #f5f3ff;
+}
+
+.eval-leaderboard-rank {
+  font-size: 18px;
+  font-weight: 900;
+  color: #081633;
+  text-align: center;
+}
+
+.eval-leaderboard-student {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.eval-leaderboard-student strong {
+  font-size: 14px;
+  font-weight: 900;
+  color: #081633;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eval-leaderboard-student span {
+  font-size: 12px;
+  color: #607492;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.eval-leaderboard-cell {
+  font-size: 14px;
+  font-weight: 700;
+  color: #41516d;
+  text-align: center;
+}
+
+.eval-leaderboard-score {
+  font-size: 15px;
+  font-weight: 900;
+  color: #2458db;
+  text-align: right;
+}

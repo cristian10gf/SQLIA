@@ -17,7 +17,17 @@ interface ExpectedResultWithData {
 
 function stableSerialize(value: unknown): string {
   const norm = (v: unknown): unknown => {
-    if (v === null || typeof v !== 'object') return v;
+    if (v === null) return v;
+    if (typeof v === 'string') {
+      const trimmed = v.trim();
+      if (trimmed !== '' && !isNaN(Number(trimmed))) {
+        const n = Number(trimmed);
+        return Math.round(n * 1e6) / 1e6;
+      }
+      return v;
+    }
+    if (typeof v === 'number') return Math.round(v * 1e6) / 1e6;
+    if (typeof v !== 'object') return v;
     if (Array.isArray(v)) return v.map(norm);
     const o = v as Record<string, unknown>;
     const out: Record<string, unknown> = {};
@@ -62,25 +72,36 @@ function buildCaseTests(
   return tests;
 }
 
+function normalizeExpectedPayload(expectedResult: unknown): {
+  payload: unknown;
+  rowCount?: number;
+} {
+  if (Array.isArray(expectedResult)) {
+    return { payload: expectedResult, rowCount: expectedResult.length };
+  }
+  if (expectedResult !== null && typeof expectedResult === 'object') {
+    const withData = expectedResult as ExpectedResultWithData;
+    if ('data' in withData) {
+      const data = withData.data;
+      return {
+        payload: data,
+        rowCount: Array.isArray(data)
+          ? (typeof withData.rowCount === 'number' ? withData.rowCount : data.length)
+          : undefined,
+      };
+    }
+    // Plain object (e.g. {"count": 10}): treat as single-row result
+    return { payload: [expectedResult], rowCount: 1 };
+  }
+  return { payload: expectedResult };
+}
+
 function buildDefaultTest(
   expectedResult: unknown,
   rows: unknown[],
 ): TestCaseResult[] {
-  let expectedPayload: unknown = expectedResult;
-  let expectedRowCount: number | undefined;
-
-  if (Array.isArray(expectedResult)) {
-    expectedPayload = expectedResult;
-    expectedRowCount = expectedResult.length;
-  } else if (expectedResult !== null && typeof expectedResult === 'object') {
-    const withData = expectedResult as ExpectedResultWithData;
-    if ('data' in withData) {
-      expectedPayload = withData.data;
-      if (typeof withData.rowCount === 'number') {
-        expectedRowCount = withData.rowCount;
-      }
-    }
-  }
+  const { payload: expectedPayload, rowCount: expectedRowCount } =
+    normalizeExpectedPayload(expectedResult);
 
   let passed = true;
   let detail: string | undefined;

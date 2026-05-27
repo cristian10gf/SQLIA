@@ -20,12 +20,16 @@ export class SqlSandboxRunnerService implements ISqlSandboxRunner {
     const { connection, schemaName, schemaDefinition, seedScript, query, timeLimitMs } =
       input;
 
-    await this.sql.createSubmissionSchema(
-      connection,
-      schemaName,
-      schemaDefinition,
-      seedScript,
-    );
+    try {
+      await this.sql.createSubmissionSchema(
+        connection,
+        schemaName,
+        schemaDefinition,
+        seedScript,
+      );
+    } catch (setupError) {
+      return { ok: false, error: setupError };
+    }
 
     try {
       const exec = await this.sql.executeInSandbox(connection, query, {

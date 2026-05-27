@@ -10,6 +10,7 @@ import type { ISubmissionRepository } from '../../domain/repositories/submission
 import { computeSubmissionScore } from '../../domain/scoring/submission-scoring';
 import { SQL_SANDBOX_RUNNER } from '../../domain/interfaces/sql-sandbox-runner.interface';
 import type { ISqlSandboxRunner } from '../../domain/interfaces/sql-sandbox-runner.interface';
+import { AnalyzeSqlUseCase } from '../../../ai/application/use-cases/analyze-sql.use-case';
 
 @Injectable()
 export class EvaluateSubmissionUseCase {
@@ -22,6 +23,7 @@ export class EvaluateSubmissionUseCase {
     private readonly submissions: ISubmissionRepository,
     @Inject(SQL_SANDBOX_RUNNER)
     private readonly sandboxRunner: ISqlSandboxRunner,
+    private readonly analyzeSql: AnalyzeSqlUseCase,
   ) {}
 
   async execute(submissionId: string): Promise<void> {
@@ -123,6 +125,23 @@ export class EvaluateSubmissionUseCase {
     };
     if (errorMessage) {
       resultJson.error = errorMessage;
+    }
+
+    let aiRecommendations: string | undefined;
+    try {
+      const aiResults = errorStatus
+        ? JSON.stringify({ error: errorMessage, status: errorStatus })
+        : JSON.stringify(rows);
+      aiRecommendations = await this.analyzeSql.execute({
+        query: submission.query,
+        expected: JSON.stringify(submission.challenge.expectedResult),
+        results: aiResults,
+      });
+    } catch (aiErr) {
+      this.logger.warn(`AI analysis skipped: ${aiErr}`);
+    }
+    if (aiRecommendations) {
+      resultJson.aiRecommendations = aiRecommendations;
     }
 
     await this.submissions.updateResult(submissionId, {

@@ -12,12 +12,15 @@ interface ChallengeCardProps {
   evaluation: Evaluation;
   isProfessor: boolean;
   isStudent: boolean;
+  isAdmin?: boolean;
   token: string;
   sandboxStatus: SandboxStatusValue | null | undefined;
+  submissionsUsed?: number;
   onSandboxStatusChange: (challengeId: number | string, status: SandboxStatusValue | null) => void;
   onEdit: (challenge: Challenge) => void;
   onDelete: (challengeId: number | string) => void;
   onStartChallenge: (evaluation: Evaluation, challenge: Challenge) => void;
+  onViewSubmissions?: (challenge: Challenge) => void;
 }
 
 export function ChallengeCard({
@@ -25,14 +28,29 @@ export function ChallengeCard({
   evaluation,
   isProfessor,
   isStudent,
+  isAdmin,
   token,
   sandboxStatus,
+  submissionsUsed,
   onSandboxStatusChange,
   onEdit,
   onDelete,
   onStartChallenge,
+  onViewSubmissions,
 }: ChallengeCardProps) {
-  const canSubmit = isChallengeAvailableForStudent(evaluation, challenge);
+  const available = isChallengeAvailableForStudent(evaluation, challenge);
+  const maxReached =
+    typeof submissionsUsed === 'number' &&
+    typeof evaluation.maxAttempts === 'number' &&
+    submissionsUsed >= evaluation.maxAttempts;
+
+  const canSubmit = available && !maxReached;
+
+  const studentBtnLabel = !available
+    ? 'No disponible'
+    : maxReached
+      ? 'Intentos agotados'
+      : 'Iniciar reto';
 
   return (
     <article className="eval-detail-challenge">
@@ -45,6 +63,16 @@ export function ChallengeCard({
         </div>
 
         <div className="eval-inline-actions">
+          {(isProfessor || isAdmin) && onViewSubmissions && (
+            <button
+              type="button"
+              className="eval-secondary-btn eval-small-btn"
+              onClick={() => onViewSubmissions(challenge)}
+            >
+              Ver entregas
+            </button>
+          )}
+
           {isProfessor && (
             <>
               <button type="button" className="eval-secondary-btn eval-small-btn" onClick={() => onEdit(challenge)}>
@@ -64,14 +92,21 @@ export function ChallengeCard({
           )}
 
           {isStudent && (
-            <button
-              type="button"
-              className="eval-primary-btn eval-start-challenge-btn"
-              disabled={!canSubmit}
-              onClick={() => onStartChallenge(evaluation, challenge)}
-            >
-              {canSubmit ? 'Iniciar reto' : 'No disponible'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <button
+                type="button"
+                className="eval-primary-btn eval-start-challenge-btn"
+                disabled={!canSubmit}
+                onClick={() => onStartChallenge(evaluation, challenge)}
+              >
+                {studentBtnLabel}
+              </button>
+              {isStudent && typeof submissionsUsed === 'number' && typeof evaluation.maxAttempts === 'number' && (
+                <span style={{ fontSize: 12, color: maxReached ? '#b91c1c' : '#607492', fontWeight: 700 }}>
+                  {submissionsUsed}/{evaluation.maxAttempts} intentos
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
