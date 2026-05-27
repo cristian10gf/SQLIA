@@ -6,6 +6,8 @@ import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 import type { DashboardRole } from '../../../../shared/layouts/DashboardLayout';
 import { courseApi } from '../../infrastructure/courseApi';
 import { enrollmentApi } from '../../infrastructure/enrollmentApi';
+import { userApi } from '../../../managemen/infrastructure/userApi';
+import type { ApiUser } from '../../../managemen/infrastructure/userApi';
 import type { Course, CourseListResponse } from '../../domain/course.types';
 import type { BulkEnrollResult, StudentInCourse } from '../../domain/enrollment.types';
 import '../styles/CoursesPage.css';
@@ -109,7 +111,8 @@ export function CoursesPage() {
   const [studentsTotal, setStudentsTotal] = useState(0);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
 
-  const canCreateCourse = role === 'PROFESSOR';
+  const canCreateCourse = role === 'PROFESSOR' || role === 'ADMIN';
+  const [professors, setProfessors] = useState<ApiUser[]>([]);
   const canManageCourse = role === 'ADMIN' || role === 'PROFESSOR';
 
   const studentsTotalPages = Math.ceil(studentsTotal / STUDENTS_LIMIT);
@@ -164,6 +167,13 @@ export function CoursesPage() {
   useEffect(() => {
     void loadCourses();
   }, [loadCourses]);
+
+  useEffect(() => {
+    if (role !== 'ADMIN' || !token) return;
+    userApi.findAll(token, 1, 100).then((res) => {
+      setProfessors(res.data.filter((u) => u.role === 'PROFESSOR'));
+    }).catch(() => {});
+  }, [role, token]);
 
   const loadStudents = useCallback(
     async (courseId: string, page: number) => {
@@ -289,7 +299,7 @@ export function CoursesPage() {
 
     setForm({
       ...emptyForm,
-      professorId: user.id,
+      professorId: role === 'PROFESSOR' ? user.id : '',
     });
     setErrors({});
     setImportFileName('');
@@ -694,18 +704,29 @@ export function CoursesPage() {
               </div>
 
               <div className="course-form-group course-form-full">
-                <label htmlFor="professorId">ID del profesor</label>
-                <input
-                  id="professorId"
-                  type="text"
-                  placeholder="professor-123"
-                  value={form.professorId}
-                  onChange={(event) =>
-                    handleChange('professorId', event.target.value)
-                  }
-                  className={errors.professorId ? 'input-error' : ''}
-                  disabled={role === 'PROFESSOR'}
-                />
+                <label htmlFor="professorId">Profesor</label>
+                {role === 'ADMIN' ? (
+                  <select
+                    id="professorId"
+                    value={form.professorId}
+                    onChange={(event) => handleChange('professorId', event.target.value)}
+                    className={errors.professorId ? 'input-error' : ''}
+                  >
+                    <option value="">— Selecciona un profesor —</option>
+                    {professors.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.fullName} ({p.email})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="professorId"
+                    type="text"
+                    value={form.professorId}
+                    disabled
+                  />
+                )}
                 {errors.professorId && (
                   <span className="course-error">{errors.professorId}</span>
                 )}

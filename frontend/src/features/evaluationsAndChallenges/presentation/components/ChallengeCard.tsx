@@ -16,7 +16,7 @@ interface ChallengeCardProps {
   sandboxStatus: SandboxStatusValue | null | undefined;
   onSandboxStatusChange: (challengeId: number | string, status: SandboxStatusValue | null) => void;
   onEdit: (challenge: Challenge) => void;
-  onDelete: (challengeId: number) => void;
+  onDelete: (challengeId: number | string) => void;
   onStartChallenge: (evaluation: Evaluation, challenge: Challenge) => void;
 }
 

@@ -9,7 +9,7 @@ interface EvaluationCardProps {
   isProfessor: boolean;
   isAdmin: boolean;
   onEdit: (evaluation: Evaluation) => void;
-  onDelete: (evaluationId: number) => void;
+  onDelete: (evaluationId: number | string) => void;
 }
 
 export function EvaluationCard({

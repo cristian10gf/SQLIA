@@ -39,7 +39,7 @@ export function parseAiChallenge(responseString: string) {
   return {
     title,
     description,
-    difficulty: (difficulty.toUpperCase() || 'EASY') as any,
+    difficulty: (difficulty ? difficulty.toUpperCase() : 'EASY') as any,
     visibility: visibility || 'PUBLIC',
     databaseEngine: databaseEngine || 'PostgreSQL', // Mapeo a camelCase para el Front
     schemaDefinition,

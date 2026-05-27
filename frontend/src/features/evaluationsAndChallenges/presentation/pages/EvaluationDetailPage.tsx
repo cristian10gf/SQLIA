@@ -5,21 +5,29 @@ import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 import { evaluationApi } from '../../infrastructure/evaluationApi';
 import { evaluationChallengeApi } from '../../infrastructure/evaluationChallengeApi';
 import { challengeApi } from '../../infrastructure/challengeApi';
-import type { Challenge, Evaluation, SandboxStatusValue } from '../../domain/evaluationChallenge.types';
+import type {
+  Challenge,
+  Evaluation,
+  SandboxStatusValue,
+} from '../../domain/evaluationChallenge.types';
 import { ChallengeCard } from '../components/ChallengeCard';
 import { ChallengeModal } from '../components/ChallengeModal';
 import { EvaluationModal } from '../components/EvaluationModal';
 import { StudentAttemptModal } from '../components/StudentAttemptModal';
 import { formatDate, getSessionUser } from '../utils/evaluationUtils';
 import '../styles/EvaluationsAndChallengesPage.css';
+import { submissionsApi } from '../../../submissions/infrastructure/submissionsApi';
 
 interface ActiveAttempt {
-  challengeId: number;
+  challengeId: number | string;
   startedAt: number;
 }
 
 export default function EvaluationDetailPage() {
-  const { courseId, evaluationId } = useParams<{ courseId: string; evaluationId: string }>();
+  const { courseId, evaluationId } = useParams<{
+    courseId: string;
+    evaluationId: string;
+  }>();
   const navigate = useNavigate();
 
   const token = authStorage.getToken();
@@ -33,17 +41,23 @@ export default function EvaluationDetailPage() {
 
   const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [sandboxStatuses, setSandboxStatuses] = useState<Record<string, SandboxStatusValue | null | undefined>>({});
+  const [sandboxStatuses, setSandboxStatuses] = useState<
+    Record<string, SandboxStatusValue | null | undefined>
+  >({});
 
   const [isLoading, setIsLoading] = useState(false);
   const [pageError, setPageError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
 
   const [showChallengeModal, setShowChallengeModal] = useState(false);
-  const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(null);
+  const [editingChallenge, setEditingChallenge] = useState<Challenge | null>(
+    null,
+  );
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
 
-  const [activeAttempt, setActiveAttempt] = useState<ActiveAttempt | null>(null);
+  const [activeAttempt, setActiveAttempt] = useState<ActiveAttempt | null>(
+    null,
+  );
 
   const loadData = useCallback(async () => {
     if (!evaluationId || !token) return;
@@ -52,9 +66,17 @@ export default function EvaluationDetailPage() {
     try {
       let evalData: Evaluation;
       if (isStudent) {
-        const listRes: any = await evaluationApi.listVisibleForStudent(courseId!, 1, 100, token);
-        const items: Evaluation[] = listRes?.data?.data ?? listRes?.data ?? listRes ?? [];
-        const found = items.find((e: Evaluation) => String(e.id) === evaluationId);
+        const listRes: any = await evaluationApi.listVisibleForStudent(
+          courseId!,
+          1,
+          100,
+          token,
+        );
+        const items: Evaluation[] =
+          listRes?.data?.data ?? listRes?.data ?? listRes ?? [];
+        const found = items.find(
+          (e: Evaluation) => String(e.id) === evaluationId,
+        );
         if (!found) throw new Error('Evaluación no encontrada o no disponible');
         evalData = found;
       } else {
@@ -65,11 +87,20 @@ export default function EvaluationDetailPage() {
 
       const chalRes: any =
         isProfessor || isAdmin
-          ? await evaluationChallengeApi.listByEvaluation(evaluationId, {}, token)
-          : await evaluationChallengeApi.listByEvaluationForStudent(evaluationId, token);
+          ? await evaluationChallengeApi.listByEvaluation(
+              evaluationId,
+              {},
+              token,
+            )
+          : await evaluationChallengeApi.listByEvaluationForStudent(
+              evaluationId,
+              token,
+            );
 
       const chalPayload = chalRes?.data || chalRes;
-      const challengeList: Challenge[] = Array.isArray(chalPayload) ? chalPayload : [];
+      const challengeList: Challenge[] = Array.isArray(chalPayload)
+        ? chalPayload
+        : [];
       setChallenges(challengeList);
 
       if (isProfessor || isAdmin) {
@@ -77,7 +108,10 @@ export default function EvaluationDetailPage() {
         await Promise.allSettled(
           challengeList.map(async (ch) => {
             try {
-              const sbRes = await challengeApi.getSandbox(ch.id.toString(), token);
+              const sbRes = await challengeApi.getSandbox(
+                ch.id.toString(),
+                token,
+              );
               statuses[ch.id.toString()] = sbRes.data?.status ?? null;
             } catch {
               statuses[ch.id.toString()] = null;
@@ -87,7 +121,9 @@ export default function EvaluationDetailPage() {
         setSandboxStatuses(statuses);
       }
     } catch (err: any) {
-      setPageError(err?.message || 'Error al cargar el detalle de la evaluación.');
+      setPageError(
+        err?.message || 'Error al cargar el detalle de la evaluación.',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -97,8 +133,14 @@ export default function EvaluationDetailPage() {
     loadData();
   }, [loadData]);
 
-  const handleSandboxStatusChange = (challengeId: number | string, status: SandboxStatusValue | null) => {
-    setSandboxStatuses((prev) => ({ ...prev, [challengeId.toString()]: status }));
+  const handleSandboxStatusChange = (
+    challengeId: number | string,
+    status: SandboxStatusValue | null,
+  ) => {
+    setSandboxStatuses((prev) => ({
+      ...prev,
+      [challengeId.toString()]: status,
+    }));
   };
 
   const handleOpenAddChallenge = () => {
@@ -114,14 +156,22 @@ export default function EvaluationDetailPage() {
   const handleChallengeSaved = async () => {
     setShowChallengeModal(false);
     setEditingChallenge(null);
-    setActionMessage(editingChallenge ? 'Reto actualizado correctamente.' : 'Reto agregado correctamente.');
+    setActionMessage(
+      editingChallenge
+        ? 'Reto actualizado correctamente.'
+        : 'Reto agregado correctamente.',
+    );
     await loadData();
   };
 
-  const handleDeleteChallenge = async (challengeId: number) => {
+  const handleDeleteChallenge = async (challengeId: number | string) => {
     if (!token || !evaluationId) return;
     try {
-      await evaluationChallengeApi.removeAssociation(evaluationId, challengeId.toString(), token);
+      await evaluationChallengeApi.removeAssociation(
+        evaluationId,
+        challengeId.toString(),
+        token,
+      );
       await challengeApi.remove(challengeId.toString(), token);
       setActionMessage('Reto eliminado correctamente.');
       await loadData();
@@ -136,14 +186,27 @@ export default function EvaluationDetailPage() {
     await loadData();
   };
 
-  const handleStartChallenge = (ev: Evaluation, ch: Challenge) => {
+  const handleStartChallenge = (_ev: Evaluation, ch: Challenge) => {
     setActiveAttempt({ challengeId: ch.id, startedAt: Date.now() });
     setActionMessage('');
   };
 
-  const handleSubmitSolution = (_challengeId: number, _solution: string) => {
-    setActiveAttempt(null);
-    setActionMessage('Solución enviada correctamente.');
+  const handleSubmitSolution = async (
+    _challengeId: number | string,
+    _solution: string,
+  ) => {
+    try {
+      const submission = {
+        query: _solution,
+        challengeId: String(_challengeId),
+        evaluationId: evaluationId!,
+      };
+      await submissionsApi.send(submission, token!);
+      setActiveAttempt(null);
+      setActionMessage('Solución enviada correctamente.');
+    } catch (error: any) {
+      setPageError(error?.message || ' No se pudo enviar la solución');
+    }
   };
 
   const handleLogout = () => {
@@ -152,7 +215,9 @@ export default function EvaluationDetailPage() {
   };
 
   const activeChallenge = activeAttempt
-    ? challenges.find((ch) => ch.id === activeAttempt.challengeId) ?? null
+    ? (challenges.find(
+        (ch) => ch.id.toString() === activeAttempt.challengeId.toString(),
+      ) ?? null)
     : null;
 
   return (
@@ -168,7 +233,9 @@ export default function EvaluationDetailPage() {
             <button
               type="button"
               className="eval-back-btn"
-              onClick={() => navigate(`/courses/evaluations-challenges/${courseId}`)}
+              onClick={() =>
+                navigate(`/courses/evaluations-challenges/${courseId}`)
+              }
             >
               ← Volver a evaluaciones
             </button>
@@ -191,7 +258,11 @@ export default function EvaluationDetailPage() {
                 Editar evaluación
               </button>
               {isProfessor && (
-                <button type="button" className="eval-primary-btn" onClick={handleOpenAddChallenge}>
+                <button
+                  type="button"
+                  className="eval-primary-btn"
+                  onClick={handleOpenAddChallenge}
+                >
                   + Agregar reto
                 </button>
               )}
@@ -199,7 +270,9 @@ export default function EvaluationDetailPage() {
           )}
         </div>
 
-        {actionMessage && <div className="eval-success-banner">{actionMessage}</div>}
+        {actionMessage && (
+          <div className="eval-success-banner">{actionMessage}</div>
+        )}
         {pageError && <div className="eval-warning-banner">{pageError}</div>}
 
         {/* Evaluation metadata */}
@@ -208,7 +281,10 @@ export default function EvaluationDetailPage() {
             <div className="eval-detail-grid">
               <div>
                 <strong>Estado</strong>
-                <span className={`eval-status-badge ${evaluation.isVisible ? 'active' : 'inactive'}`} style={{ display: 'inline-block', marginTop: 6 }}>
+                <span
+                  className={`eval-status-badge ${evaluation.isVisible ? 'active' : 'inactive'}`}
+                  style={{ display: 'inline-block', marginTop: 6 }}
+                >
                   {evaluation.isVisible ? 'Visible' : 'Oculta'}
                 </span>
               </div>
@@ -234,7 +310,14 @@ export default function EvaluationDetailPage() {
               </div>
             </div>
             {evaluation.description && (
-              <p style={{ margin: '0 0 0', color: '#607492', fontSize: 14, lineHeight: 1.5 }}>
+              <p
+                style={{
+                  margin: '0 0 0',
+                  color: '#607492',
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                }}
+              >
                 {evaluation.description}
               </p>
             )}
@@ -285,7 +368,10 @@ export default function EvaluationDetailPage() {
           token={token!}
           challengeCount={challenges.length}
           onSave={handleChallengeSaved}
-          onClose={() => { setShowChallengeModal(false); setEditingChallenge(null); }}
+          onClose={() => {
+            setShowChallengeModal(false);
+            setEditingChallenge(null);
+          }}
         />
       )}
 

@@ -47,7 +47,7 @@ export class EvaluationController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiResponse({ type: CreateEvaluationDto })
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Crear una evaluacion' })
   async create(@Body() dto: CreateEvaluationDto, @CurrentUser() user: User) {
     const evaluation = await this.createEvaluationUseCase.execute(dto, String(user.id));
@@ -61,7 +61,7 @@ export class EvaluationController {
   @Get('course/:courseId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Listar evaluaciones de un curso para profesor con filtro de visibilidad y paginacion' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
@@ -83,7 +83,7 @@ export class EvaluationController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Obtener una evaluacion por ID' })
   async findOne(@Param('id', ParseUUIDPipe) id: string) {
     return await this.findEvaluationByIdUseCase.execute(id);
@@ -92,7 +92,7 @@ export class EvaluationController {
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Editar una evaluacion' })
   async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEvaluationDto) {
     const evaluation = await this.updateEvaluationUseCase.execute(id, dto);
@@ -106,7 +106,7 @@ export class EvaluationController {
   @Patch(':id/change-visibility')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Cambiar la visibilidad de una evaluacion' })
   async changeVisibility(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ChangeEvaluationVisibilityDto) {
     const evaluation = await this.changeEvaluationVisibilityUseCase.execute(id, dto.isVisible);
@@ -120,7 +120,7 @@ export class EvaluationController {
   @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.PROFESSOR)
+  @Roles(Role.PROFESSOR, Role.ADMIN)
   @ApiOperation({ summary: 'Eliminar una evaluacion' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.deleteEvaluationUseCase.execute(id);

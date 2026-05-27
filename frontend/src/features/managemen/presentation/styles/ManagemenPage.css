@@ -4,6 +4,136 @@
   gap: 26px;
 }
 
+/* ── Header actions row ─────────────────────────────────────────────────── */
+.management-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ── Clickable table rows ───────────────────────────────────────────────── */
+.management-table-row-clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.management-table-row-clickable:hover {
+  background: #f0f5ff;
+}
+
+/* ── Import result banner ───────────────────────────────────────────────── */
+.management-import-result {
+  background: #edf7ff;
+  border: 1px solid #bfdfff;
+  border-radius: 16px;
+  padding: 16px 20px;
+  font-size: 14px;
+  color: #1a4a7a;
+}
+
+.management-import-result strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: #0c2a55;
+}
+
+.management-import-result ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Detail modal ───────────────────────────────────────────────────────── */
+.management-modal--detail {
+  max-width: 540px;
+}
+
+.management-detail-loading {
+  padding: 20px 0;
+  text-align: center;
+  color: #607492;
+  font-size: 14px;
+}
+
+.management-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 4px 0 8px;
+}
+
+.management-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.management-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.management-detail-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #7a90b0;
+}
+
+.management-detail-value {
+  font-size: 14px;
+  color: #0c1b3a;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.management-detail-id {
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  color: #5a6e88;
+}
+
+.management-detail-section h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e3a5f;
+}
+
+.management-detail-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.management-detail-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f5f8ff;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #1e3a5f;
+  font-weight: 600;
+}
+
+.management-detail-sub {
+  font-size: 12px;
+  color: #7a90b0;
+  font-weight: 500;
+}
+
 .management-heading {
   max-width: 980px;
 }
