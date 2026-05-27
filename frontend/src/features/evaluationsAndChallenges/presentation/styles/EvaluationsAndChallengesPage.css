@@ -1672,3 +1672,151 @@
   flex-direction: row;
   justify-content: space-between;
 }
+
+/* ─── Submission result panel ──────────────────────────────────────── */
+
+.eval-submission-result {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.eval-result-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 22px;
+  border-radius: 22px;
+  gap: 12px;
+}
+
+.eval-result-status-banner.accepted {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+
+.eval-result-status-banner.rejected {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+}
+
+.eval-result-status-label {
+  font-size: 20px;
+  font-weight: 900;
+  color: #081633;
+}
+
+.eval-result-score {
+  font-size: 28px;
+  font-weight: 900;
+  color: #081633;
+}
+
+.eval-result-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.eval-result-meta-item {
+  background: #f9fbff;
+  border: 1px solid #e8edf6;
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.eval-result-meta-item span {
+  font-size: 12px;
+  color: #607492;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.eval-result-meta-item strong {
+  font-size: 20px;
+  font-weight: 900;
+  color: #081633;
+}
+
+.eval-result-error-box {
+  background: #fff1f1;
+  border: 1px solid #fca5a5;
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: #b91c1c;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.eval-ai-recommendations {
+  border: 1px solid #ddd6fe;
+  border-radius: 22px;
+  background: #fbfaff;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eval-ai-recommendations-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eval-ai-recommendations-body {
+  margin: 0;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.eval-result-tests {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eval-result-tests-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.eval-test-badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.eval-test-badge.pass {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.eval-test-badge.fail {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.eval-polling-indicator {
+  color: #5b21b6;
+  font-size: 14px;
+  font-weight: 800;
+  margin-right: auto;
+}
+
+.eval-student-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}

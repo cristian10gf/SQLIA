@@ -16,7 +16,6 @@ import { EvaluationModal } from '../components/EvaluationModal';
 import { StudentAttemptModal } from '../components/StudentAttemptModal';
 import { formatDate, getSessionUser } from '../utils/evaluationUtils';
 import '../styles/EvaluationsAndChallengesPage.css';
-import { submissionsApi } from '../../../submissions/infrastructure/submissionsApi';
 
 interface ActiveAttempt {
   challengeId: number | string;
@@ -191,22 +190,9 @@ export default function EvaluationDetailPage() {
     setActionMessage('');
   };
 
-  const handleSubmitSolution = async (
-    _challengeId: number | string,
-    _solution: string,
-  ) => {
-    try {
-      const submission = {
-        query: _solution,
-        challengeId: String(_challengeId),
-        evaluationId: evaluationId!,
-      };
-      await submissionsApi.send(submission, token!);
-      setActiveAttempt(null);
-      setActionMessage('Solución enviada correctamente.');
-    } catch (error: any) {
-      setPageError(error?.message || ' No se pudo enviar la solución');
-    }
+  const handleCloseAttempt = () => {
+    setActiveAttempt(null);
+    setActionMessage('Solución enviada. Revisa tu resultado cuando esté disponible.');
   };
 
   const handleLogout = () => {
@@ -390,7 +376,9 @@ export default function EvaluationDetailPage() {
           evaluation={evaluation}
           challenge={activeChallenge}
           startedAt={activeAttempt.startedAt}
-          onSubmit={handleSubmitSolution}
+          token={token!}
+          evaluationId={evaluationId!}
+          onClose={handleCloseAttempt}
         />
       )}
     </DashboardLayout>
