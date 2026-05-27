@@ -113,7 +113,7 @@ export default function EvaluationsListPage() {
     await loadEvaluations();
   };
 
-  const handleDelete = async (evaluationId: number) => {
+  const handleDelete = async (evaluationId: number | string) => {
     if (!token) return;
     try {
       await evaluationApi.remove(evaluationId.toString(), token);

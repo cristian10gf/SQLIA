@@ -23,17 +23,7 @@ function App() {
       <Route path="/courses" element={<CoursesPage />} />
       <Route path="/evaluation" element={<ProfessorEvaluationsPage />} />
       <Route path="/evaluation/:courseId" element={<ProfessorEvaluationsPage />} />
-      <Route
-        path="/courses/evaluations-challenges/:courseId"
-        element={<ProfessorEvaluationsPage />}
-      <Route path="/evaluation" element={<ResultsPage />} />
-      <Route path="/reports" element={<ReportsPage />} />
-      <Route path="/managemen" element={<ManagementPage />} />
-
-      <Route
-        path="/courses/evaluations-challenges/:courseId"
-        element={<EvaluationsListPage />}
-      />
+      <Route path="/courses/evaluations-challenges/:courseId" element={<EvaluationsListPage />} />
 
       <Route
         path="/courses/evaluations-challenges/:courseId/evaluation/:evaluationId"

@@ -14,7 +14,7 @@ import { formatDate, getSessionUser } from '../utils/evaluationUtils';
 import '../styles/EvaluationsAndChallengesPage.css';
 
 interface ActiveAttempt {
-  challengeId: number;
+  challengeId: number | string;
   startedAt: number;
 }
 
@@ -118,7 +118,7 @@ export default function EvaluationDetailPage() {
     await loadData();
   };
 
-  const handleDeleteChallenge = async (challengeId: number) => {
+  const handleDeleteChallenge = async (challengeId: number | string) => {
     if (!token || !evaluationId) return;
     try {
       await evaluationChallengeApi.removeAssociation(evaluationId, challengeId.toString(), token);
@@ -136,12 +136,12 @@ export default function EvaluationDetailPage() {
     await loadData();
   };
 
-  const handleStartChallenge = (ev: Evaluation, ch: Challenge) => {
+  const handleStartChallenge = (_ev: Evaluation, ch: Challenge) => {
     setActiveAttempt({ challengeId: ch.id, startedAt: Date.now() });
     setActionMessage('');
   };
 
-  const handleSubmitSolution = (_challengeId: number, _solution: string) => {
+  const handleSubmitSolution = (_challengeId: number | string, _solution: string) => {
     setActiveAttempt(null);
     setActionMessage('Solución enviada correctamente.');
   };
@@ -152,7 +152,7 @@ export default function EvaluationDetailPage() {
   };
 
   const activeChallenge = activeAttempt
-    ? challenges.find((ch) => ch.id === activeAttempt.challengeId) ?? null
+    ? challenges.find((ch) => ch.id.toString() === activeAttempt.challengeId.toString()) ?? null
     : null;
 
   return (

@@ -102,7 +102,7 @@ export default function ProfessorEvaluationsPage() {
     routeCourseId ?? null,
   );
   const [selectedEvaluationId, setSelectedEvaluationId] = useState<
-    number | null
+    string | number | null
   >(null);
   const [challengeList, setChallengeList] = useState<Challenge[]>([]);
 
@@ -338,11 +338,6 @@ export default function ProfessorEvaluationsPage() {
       cancelled = true;
     };
   }, [isProfessor, selectedEvaluation, token]);
-
-  const totalChallenges = useMemo(
-    () => evaluations.reduce((total, evaluation) => total + (evaluation.challenges?.length ?? 0), 0),
-    [evaluations],
-  );
 
   const selectedCourseStats = useMemo(
     () => ({

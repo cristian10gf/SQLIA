@@ -7,7 +7,7 @@ interface StudentAttemptModalProps {
   evaluation: Evaluation;
   challenge: Challenge;
   startedAt: number;
-  onSubmit: (challengeId: number, solution: string) => void;
+  onSubmit: (challengeId: number | string, solution: string) => void;
 }
 
 export function StudentAttemptModal({ evaluation, challenge, startedAt, onSubmit }: StudentAttemptModalProps) {
