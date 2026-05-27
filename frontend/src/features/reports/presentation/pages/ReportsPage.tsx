@@ -529,16 +529,13 @@ export function ReportsPage() {
                 <article className="reports-metric-card">
                   <span>Tiempo promedio</span>
                   <strong>{formatNumber(courseMetrics.averageExecutionTime)} ms</strong>
-                  <p>Tiempo medio de ejecución.</p>
+                  <p>Tiempo promedio de ejecución.</p>
                 </article>
               </section>
 
               <section className="reports-section-card">
                 <div className="reports-panel-header compact">
                   <h2>Promedio por estudiante</h2>
-                  <p>
-                    Datos calculados con el endpoint de resumen por estudiante.
-                  </p>
                 </div>
 
                 <div className="reports-student-search">
@@ -546,12 +543,12 @@ export function ReportsPage() {
                     type="search"
                     value={studentSearch}
                     onChange={(event) => setStudentSearch(event.target.value)}
-                    placeholder="Buscar estudiante por nombre, correo o ID..."
+                    placeholder="Buscar estudiante por nombre o correo"
                   />
                 </div>
 
                 {detailLoading ? (
-                  <div className="reports-empty-state">Cargando estudiantes y resúmenes...</div>
+                  <div className="reports-empty-state">Cargando estudiantes...</div>
                 ) : (
                   <div className="reports-table-wrapper">
                     <table className="reports-table">
