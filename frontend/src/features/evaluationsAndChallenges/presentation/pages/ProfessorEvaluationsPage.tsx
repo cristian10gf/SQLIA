@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DashboardLayout } from '../../../../shared/layouts/DashboardLayout';
 import type { DashboardRole } from '../../../../shared/layouts/DashboardLayout';
@@ -84,6 +84,7 @@ function getChallengeEngine(value?: string) {
 export default function ProfessorEvaluationsPage() {
   const navigate = useNavigate();
   const { courseId: routeCourseId } = useParams<{ courseId?: string }>();
+  const coursesRailRef = useRef<HTMLDivElement | null>(null);
 
   const [session] = useState(() => ({
     token: authStorage.getToken(),
@@ -351,6 +352,21 @@ export default function ProfessorEvaluationsPage() {
     [evaluations.length, challengeList.length],
   );
 
+  const scrollCourses = (direction: 'left' | 'right') => {
+    const rail = coursesRailRef.current;
+
+    if (!rail) {
+      return;
+    }
+
+    const scrollAmount = Math.max(260, rail.clientWidth * 0.8);
+
+    rail.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    });
+  };
+
   const handleSelectCourse = (courseId: string) => {
     setSelectedCourseId(courseId);
     setSelectedEvaluationId(null);
@@ -376,6 +392,8 @@ export default function ProfessorEvaluationsPage() {
       onLogout={handleLogout}
     >
       <section className="prof-eval-page">
+        
+ 
 
         {courseError && <div className="prof-eval-alert">{courseError}</div>}
         {evaluationError && (
@@ -390,14 +408,34 @@ export default function ProfessorEvaluationsPage() {
             Esta vista está pensada para profesores.
           </div>
         ) : (
-          <div className="prof-eval-grid">
-            <aside className="prof-eval-panel prof-eval-course-panel">
+          <div className="prof-eval-stack">
+            <section className="prof-eval-panel prof-eval-course-panel">
               <div className="prof-eval-panel-header">
                 <div>
                   <span className="prof-eval-panel-label">Cursos</span>
                   <h2>Mis cursos</h2>
                 </div>
-                <span className="prof-eval-panel-count">{courses.length}</span>
+
+                <div className="prof-eval-carousel-actions">
+                  <button
+                    type="button"
+                    className="prof-eval-icon-button"
+                    onClick={() => scrollCourses('left')}
+                    aria-label="Desplazar cursos a la izquierda"
+                    title="Anterior"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="prof-eval-icon-button"
+                    onClick={() => scrollCourses('right')}
+                    aria-label="Desplazar cursos a la derecha"
+                    title="Siguiente"
+                  >
+                    ›
+                  </button>
+                </div>
               </div>
 
               {isLoadingCourses ? (
@@ -407,7 +445,7 @@ export default function ProfessorEvaluationsPage() {
                   No hay cursos asignados para este profesor.
                 </div>
               ) : (
-                <div className="prof-eval-course-list">
+                <div className="prof-eval-course-rail" ref={coursesRailRef}>
                   {courses.map((course) => {
                     const isActive = course.id === selectedCourseId;
 
@@ -442,7 +480,7 @@ export default function ProfessorEvaluationsPage() {
                   })}
                 </div>
               )}
-            </aside>
+            </section>
 
             <section className="prof-eval-panel prof-eval-detail-panel">
               <div className="prof-eval-panel-header">
@@ -456,7 +494,7 @@ export default function ProfessorEvaluationsPage() {
                   <p>
                     {selectedCourse
                       ? `${selectedCourse.code} · ${selectedCourse.period} · Grupo ${selectedCourse.group}`
-                      : 'A la derecha aparecerá el curso seleccionado con sus evaluaciones.'}
+                      : 'Debajo aparecerán las evaluaciones y retos del curso seleccionado.'}
                   </p>
                 </div>
 
