@@ -8,7 +8,7 @@ export class GenerateChallengeUseCase {
     @Inject('IAiProvider') private readonly aiProvider: IAiProvider,
   ) {}
 
-  async execute(dto: GenerateChallengeDto): Promise<string> {
+  async execute(dto: GenerateChallengeDto): Promise<{ result: string }> {
     return await this.aiProvider.generateChallenge(dto.prompt);
   }
 }
