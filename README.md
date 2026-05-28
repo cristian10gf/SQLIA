@@ -8,6 +8,8 @@
 
 SQLIA es una plataforma educativa interactiva orientada al aprendizaje y evaluación de SQL. Permite a los profesores crear cursos y retos interactivos, y a los estudiantes inscribirse, resolver ejercicios reales de bases de datos y recibir evaluaciones automatizadas.
 
+**Enlace a la demo:** https://youtu.be/wnjdga0tPBg
+
 ## 🏛️ Arquitectura del Proyecto (Clean Architecture)
 
 Este repositorio está construido siguiendo estrictamente los principios de **Clean Architecture** (Arquitectura Limpia). El objetivo principal es mantener un alto nivel de mantenibilidad, máxima testabilidad y un nulo acoplamiento con frameworks o librerías externas en el corazón del negocio.
